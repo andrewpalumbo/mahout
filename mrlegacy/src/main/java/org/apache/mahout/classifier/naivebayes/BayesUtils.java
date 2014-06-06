@@ -162,6 +162,22 @@ public final class BayesUtils {
     }
     return sumVectors;
   }
+  
+  public static Map<Integer, String> readDictionary(Configuration conf, Path dictionaryPath) {
+    Map<Integer, String> dictionaryMap = new HashMap<Integer, String>();
+    for (Pair<Text, IntWritable> pair : new SequenceFileIterable<Text, IntWritable>(dictionaryPath, true, conf)) {
+      dictionaryMap.put(pair.getSecond().get(), pair.getFirst().toString());
+    }
+    return dictionaryMap;
+  }
+  
+  public static Map<Integer, String> readDocumentFrequency(Configuration conf, Path dictionaryPath) {
+    Map<Integer, String> dfMap = new HashMap<Integer, String>();
+    for (Pair<Text, IntWritable> pair : new SequenceFileIterable<Text, IntWritable>(dictionaryPath, true, conf)) {
+      dfMap.put(pair.getSecond().get(), pair.getFirst().toString());
+    }
+    return dfMap;
+  }
 
 
 }
