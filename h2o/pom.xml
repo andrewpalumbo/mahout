@@ -203,11 +203,16 @@
   </build>
 
   <dependencies>
-
+<!--
     <dependency>
       <groupId>org.apache.mahout</groupId>
       <artifactId>mahout-math-scala</artifactId>
       <version>${project.version}</version>
+    </dependency>
+-->
+    <dependency>
+          <groupId>org.apache.mahout</groupId>
+          <artifactId>mahout-math-scala_${scala.major}</artifactId>
     </dependency>
 
     <dependency>
