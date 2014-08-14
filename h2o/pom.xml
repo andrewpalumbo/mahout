@@ -203,23 +203,28 @@
   </build>
 
   <dependencies>
-
-    <dependency>
+      <!--
+          <dependency>
+            <groupId>org.apache.mahout</groupId>
+            <artifactId>mahout-math-scala</artifactId>
+            <version>${project.version}</version>
+          </dependency>
+-->
+   <dependency>
       <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-math-scala</artifactId>
-      <version>${project.version}</version>
-    </dependency>
+      <artifactId>mahout-math-scala_${scala.major}</artifactId>
+   </dependency>
 
-    <dependency>
-      <!-- for MatrixWritable and VectorWritable -->
+   <dependency>
+            <!-- for MatrixWritable and VectorWritable -->
       <groupId>org.apache.mahout</groupId>
       <artifactId>mahout-mrlegacy</artifactId>
       <version>${project.version}</version>
-    </dependency>
+   </dependency>
 
    <dependency>
       <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-math-scala</artifactId>
+      <artifactId>mahout-math-scala_${scala.major}</artifactId>
       <classifier>tests</classifier>
       <scope>test</scope>
    </dependency>
