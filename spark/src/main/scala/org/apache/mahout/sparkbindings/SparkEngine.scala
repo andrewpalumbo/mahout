@@ -146,6 +146,7 @@ object SparkEngine extends DistributedEngine {
     val drmMetadata = hdfsUtils.readDrmHeader(path)
     val k2vFunc = drmMetadata.keyW2ValFunc
 
+
     // Load RDD and convert all Writables to value types right away (due to reuse of writables in
     // Hadoop we must do it right after read operation).
     val rdd = sc.sequenceFile(path, classOf[Writable], classOf[VectorWritable], minPartitions = parMin)
@@ -232,8 +233,18 @@ object SparkEngine extends DistributedEngine {
       wcs
     }
 
-    val textRdd = sc.sequenceFile(path, classOf[IntWritable], classOf[Text], minPartitions = parMin)
-      .map{ case (wKey, text) => wKey.get -> text.toString}
+    // read the metadata from a sequence file in the path to determine key type
+    val drmMetadata = hdfsUtils.readDrmHeader(path)
+    val k2vFunc = drmMetadata.keyW2ValFunc
+
+    // get the key class tag from the metadata
+    val keyClassTag = drmMetadata.keyClassTag
+
+
+    val textRdd = sc.sequenceFile(path, classOf[Writable], classOf[Text], minPartitions = parMin)
+      // Immediately convert keys and value writables into value types.
+      .map { case (wKey, text) => (k2vFunc(wKey) -> text.toString)}
+
 
     val processIdf = if ("tfidf" equalsIgnoreCase weight) true else false
     val shouldPrune = maxDFSigma >= 0.0 || maxDFPercent < 100
@@ -258,7 +269,36 @@ object SparkEngine extends DistributedEngine {
               .foreach{ e => vector.setQuick(e._1, e._2) }
           (doc, vector)
         }
-      val tfMatrix = drmWrap(rdd = tfVectors, ncol = numCols, cacheHint = CacheHint.NONE)
+
+
+      // val tfMatrix = drmWrap(rdd = tfVectors, ncol = numCols, cacheHint = CacheHint.NONE)(drmMetadata.keyClassTag.asInstanceOf[ClassTag[Any]])
+
+      // Wrap into a DRM type with correct matrix row key class tag evident.
+      val tfMatrix = drmMetadata.keyClassTag match {
+
+        case ct if ct == ClassTag.Int => {
+          (drmWrap(rdd = tfVectors, ncol = numCols, cacheHint = CacheHint.NONE)
+            (keyClassTag.asInstanceOf[ClassTag[Any]])).asInstanceOf[CheckpointedDrmSpark[Int]]
+        }
+        case ct if ct == ClassTag(classOf[String]) => {
+          (drmWrap(rdd = tfVectors, ncol = numCols, cacheHint = CacheHint.NONE)
+            (keyClassTag.asInstanceOf[ClassTag[Any]])).asInstanceOf[CheckpointedDrmSpark[String]]
+        }
+        case ct if ct == ClassTag.Long => {
+          (drmWrap(rdd = tfVectors, ncol = numCols, cacheHint = CacheHint.NONE)
+            (keyClassTag.asInstanceOf[ClassTag[Any]])).asInstanceOf[CheckpointedDrmSpark[Long]]
+        }
+        case _ => {
+          (drmWrap(rdd = tfVectors, ncol = numCols, cacheHint = CacheHint.NONE)
+            (keyClassTag.asInstanceOf[ClassTag[Any]])).asInstanceOf[CheckpointedDrmSpark[Int]]
+        }
+      }
+
+      tfMatrix.checkpoint()
+
+      // make sure that the classtag of the tf matrix matches the metadata keyClasstag
+      assert(tfMatrix.keyClassTag == drmMetadata.keyClassTag)
+
 
       //do we need do calculate df-vector?
       if (shouldPrune || processIdf) {
