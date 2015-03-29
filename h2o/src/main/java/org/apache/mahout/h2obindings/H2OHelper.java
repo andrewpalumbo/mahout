@@ -23,9 +23,11 @@ import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.SparseMatrix;
 import org.apache.mahout.math.DenseVector;
 
+import water.Key;
 import water.MRTask;
 import water.Futures;
 import water.fvec.Frame;
+import water.fvec.NewChunk;
 import water.fvec.Vec;
 import water.fvec.Chunk;
 import water.parser.ValueString;
@@ -323,12 +325,28 @@ public class H2OHelper {
     Map<String,Integer> map = m.getRowLabelBindings();
     if (map != null) {
       // label vector must be similarly partitioned like the Frame
-      labels = frame.anyVec().makeZero();
+      byte []typeArr = {Vec.T_STR};
+      labels = frame.lastVec().makeCons(1, frame.numRows(), null , typeArr)[0];
+      //labels = new Vec(labels1._key, labels1._espc, null, Vec.T_STR);
       Vec.Writer writer = labels.open();
+
       Map<Integer,String> rmap = reverseMap(map);
       for (int r = 0; r < m.rowSize(); r++) {
+        if (labels.isString()){
+          System.out.println("this is a string vector");
+        } else {
+          System.out.println("this is not a string vector");
+        }
+        System.out.println("r: "+ r +" val:"+ rmap.get(r) );
+
+        System.out.println("Chunk type:" + labels.chunkForRow(r).getClass().getSimpleName());
+
+       // (labels.chunkForRow(r)).set_abs(r, rmap.get(r));
+        //labels.set(r, rmap.get(r).toString());
+
         // TODO: fix bug here... Exception is being thrown when setting Strings
-        writer.set(r, rmap.get(r));
+
+        writer.set((long)r, rmap.get(r).toString());
       }
 
       writer.close(closer);
