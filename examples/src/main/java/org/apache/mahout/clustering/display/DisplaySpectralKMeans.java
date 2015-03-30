@@ -19,10 +19,12 @@ package org.apache.mahout.clustering.display;
 
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.File;
 import java.io.Writer;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Closeables;
+import com.google.common.io.Files;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -61,20 +63,21 @@ public class DisplaySpectralKMeans extends DisplayClustering {
     if (!fs.exists(output)) {
       fs.mkdirs(output);
     }
-
-    try (Writer writer = new BufferedWriter(new FileWriter(affinities.toString()))){
+    Writer writer = null;
+    try {
+      writer = Files.newWriter(new File(affinities.toString()), Charsets.UTF_8);
       for (int i = 0; i < SAMPLE_DATA.size(); i++) {
         for (int j = 0; j < SAMPLE_DATA.size(); j++) {
-          writer.write(i + "," + j + ',' + measure.distance(SAMPLE_DATA.get(i).get(),
-              SAMPLE_DATA.get(j).get()) + '\n');
+          writer.write(i + "," + j + ',' + measure.distance(SAMPLE_DATA.get(i).get(), SAMPLE_DATA.get(j).get()) + '\n');
         }
       }
+    } finally {
+      Closeables.close(writer, false);
     }
-
     int maxIter = 10;
     double convergenceDelta = 0.001;
-    SpectralKMeansDriver.run(new Configuration(), affinities, output, SAMPLE_DATA.size(), 3, measure,
-        convergenceDelta, maxIter, tempDir);
+    SpectralKMeansDriver.run(new Configuration(), affinities, output, SAMPLE_DATA.size(), 3, measure, convergenceDelta,
+        maxIter, tempDir, false);
     new DisplaySpectralKMeans();
   }
 

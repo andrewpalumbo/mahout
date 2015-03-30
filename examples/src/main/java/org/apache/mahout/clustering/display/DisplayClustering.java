@@ -17,14 +17,18 @@
 
 package org.apache.mahout.clustering.display;
 
-import java.awt.*;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Toolkit;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -39,8 +43,8 @@ import org.apache.hadoop.io.SequenceFile;
 import org.apache.hadoop.io.Text;
 import org.apache.mahout.clustering.AbstractCluster;
 import org.apache.mahout.clustering.Cluster;
-import org.apache.mahout.clustering.UncommonDistributions;
 import org.apache.mahout.clustering.classify.WeightedVectorWritable;
+import org.apache.mahout.clustering.UncommonDistributions;
 import org.apache.mahout.clustering.iterator.ClusterWritable;
 import org.apache.mahout.common.Pair;
 import org.apache.mahout.common.RandomUtils;
@@ -54,6 +58,9 @@ import org.apache.mahout.math.VectorWritable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.Lists;
+import com.google.common.io.Closeables;
+
 public class DisplayClustering extends Frame {
   
   private static final Logger log = LoggerFactory.getLogger(DisplayClustering.class);
@@ -62,11 +69,11 @@ public class DisplayClustering extends Frame {
   
   protected static final int SIZE = 8; // screen size in inches
   
-  private static final Collection<Vector> SAMPLE_PARAMS = new ArrayList<>();
+  private static final Collection<Vector> SAMPLE_PARAMS = Lists.newArrayList();
   
-  protected static final List<VectorWritable> SAMPLE_DATA = new ArrayList<>();
+  protected static final List<VectorWritable> SAMPLE_DATA = Lists.newArrayList();
   
-  protected static final List<List<Cluster>> CLUSTERS = new ArrayList<>();
+  protected static final List<List<Cluster>> CLUSTERS = Lists.newArrayList();
   
   static final Color[] COLORS = { Color.red, Color.orange, Color.yellow, Color.green, Color.blue, Color.magenta,
     Color.lightGray };
@@ -191,7 +198,7 @@ public class DisplayClustering extends Frame {
     
     Path clusteredPointsPath = new Path(data, "clusteredPoints");
     Path inputPath = new Path(clusteredPointsPath, "part-m-00000");
-    Map<Integer,Color> colors = new HashMap<>();
+    Map<Integer,Color> colors = new HashMap<Integer,Color>();
     int point = 0;
     for (Pair<IntWritable,WeightedVectorWritable> record : new SequenceFileIterable<IntWritable,WeightedVectorWritable>(
         inputPath, new Configuration())) {
@@ -311,17 +318,19 @@ public class DisplayClustering extends Frame {
   protected static void writeSampleData(Path output) throws IOException {
     Configuration conf = new Configuration();
     FileSystem fs = FileSystem.get(output.toUri(), conf);
-
-    try (SequenceFile.Writer writer = new SequenceFile.Writer(fs, conf, output, Text.class, VectorWritable.class)) {
+    SequenceFile.Writer writer = new SequenceFile.Writer(fs, conf, output, Text.class, VectorWritable.class);
+    try {
       int i = 0;
       for (VectorWritable vw : SAMPLE_DATA) {
         writer.append(new Text("sample_" + i++), vw);
       }
+    } finally {
+      Closeables.close(writer, false);
     }
   }
   
   protected static List<Cluster> readClustersWritable(Path clustersIn) {
-    List<Cluster> clusters = new ArrayList<>();
+    List<Cluster> clusters = Lists.newArrayList();
     Configuration conf = new Configuration();
     for (ClusterWritable value : new SequenceFileDirValueIterable<ClusterWritable>(clustersIn, PathType.LIST,
         PathFilters.logsCRCFilter(), conf)) {
