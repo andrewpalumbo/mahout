@@ -65,12 +65,11 @@ class MahoutLoop extends SparkILoop{
         }
       }
 
-//      val iMain: SparkIMain = SparkILoop.loopToInterpreter(_interp)
-//     print("\n Imain: "+iMain.getClass.getName)
-//     //System.exit(0)
-//
-//     val classServerUri_ : String = iMain.classServerUri.toString
-//     System.out.println("!!!!!!!"+classServerUri_)
+//     val classServverURI = if (sc.version().startsWith("1.1")) {
+    //  _interp.class
+//     } else if (sc.version().startsWith("1.2")) {
+//       intp.interpret("import sqlContext._");
+//     } else if (sc.version().startsWith("1.3")) {
 
       val jars = SparkILoop.getAddedJars.map(new java.io.File(_).getAbsolutePath)
       val conf = new SparkConf().set("spark.repl.class.uri", _interp.classServerUri)
@@ -92,26 +91,29 @@ class MahoutLoop extends SparkILoop{
       sparkContext
   }
 
+  // need to change our SparkDistributedContext name to 'sc' since  we cannot override the
+  // private sparkCleanUp() method.
   override def initializeSpark() {
       _interp.beQuietDuring {
         _interp.interpret("""
 
-         @transient implicit val sdc: org.apache.mahout.math.drm.DistributedContext =
+         @transient implicit val sc: org.apache.mahout.math.drm.DistributedContext =
             new org.apache.mahout.sparkbindings.SparkDistributedContext(
             org.apache.spark.repl.Main.interp.createSparkContext())
 
                 """)
         _interp.interpret("import org.apache.spark.SparkContext._")
-        echoToShell("Mahout distributed context is available as \"implicit val sdc\".")
+        echoToShell("Mahout distributed context is available as \"implicit val sc\".")
       }
     }
 
-    def sparkCleanUp() {
-      echoToShell("Stopping Spark context.")
-      _interp.beQuietDuring {
-        _interp.interpret("sdc.stop()")
-      }
-    }
+    // not part of the Spark REPL Developer API
+//    def sparkCleanUp() {
+//      echoToShell("Stopping Spark context.")
+//      _interp.beQuietDuring {
+//        _interp.interpret("sdc.stop()")
+//      }
+//    }
 
   override protected def postInitialization() {
     super.postInitialization()
