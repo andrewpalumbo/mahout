@@ -98,7 +98,7 @@ object FlinkEngine extends DistributedEngine {
   override def toPhysical[K: ClassTag](plan: DrmLike[K], ch: CacheHint.CacheHint): CheckpointedDrm[K] = {
     // Flink-specific Physical Plan translation.
     implicit val typeInformation = generateTypeInformation[K]
-    val drm = flinkTranslate(plan)
+    val drm = flinkTranslate[K](plan)
     val newcp = new CheckpointedFlinkDrm(ds = drm.asRowWise.ds, _nrow = plan.nrow, _ncol = plan.ncol)
     newcp.cache()
   }
@@ -113,7 +113,7 @@ object FlinkEngine extends DistributedEngine {
       // TODO: create specific implementation of Atx, see MAHOUT-1749
       val opAt = OpAt(a)
       val at = FlinkOpAt.sparseTrick(opAt, flinkTranslate(a)(op.classTagA))
-      val atCast = new CheckpointedFlinkDrm(at.asRowWise.ds, _nrow=opAt.nrow, _ncol=opAt.ncol)
+      val atCast = new CheckpointedFlinkDrm(at.asRowWise.ds, _nrow=opAt.nrow, _ncol=opAt.ncol)(op.classTagA)
       val opAx = OpAx(atCast, x)
       FlinkOpAx.blockifiedBroadcastAx(opAx, flinkTranslate(atCast)(op.classTagA))
     case op @ OpAtB(a, b) => FlinkOpAtB.notZippable(op, flinkTranslate(a)(op.classTagA), 
@@ -164,7 +164,8 @@ object FlinkEngine extends DistributedEngine {
       implicit val typeInformation = generateTypeInformation[K]
       FlinkOpMapBlock.apply(flinkTranslate(op.A)(op.classTagA), op.ncol, op.bmf)
     case cp: CheckpointedFlinkDrm[K] =>
-      implicit val typeInformation = generateTypeInformation[K]
+//      implicit val typeInformation = generateTypeInformation[K]
+      implicit val typeInformation = createTypeInformation[Int].asInstanceOf[TypeInformation[K]]
       new RowsFlinkDrm(cp.ds, cp.ncol)
     case _ => throw new NotImplementedError(s"operator $oper is not implemented yet")
   }
@@ -250,14 +251,15 @@ object FlinkEngine extends DistributedEngine {
 
     val parallelDrm = parallelize(m, numPartitions)
 
-    new CheckpointedFlinkDrm(ds=parallelDrm, _nrow=m.numRows(), _ncol=m.numCols())
+    new CheckpointedFlinkDrm[Int](ds=parallelDrm, _nrow=m.numRows(), _ncol=m.numCols()).asInstanceOf[CheckpointedFlinkDrm[Int]]
   }
 
   private[flinkbindings] def parallelize(m: Matrix, parallelismDegree: Int)
       (implicit dc: DistributedContext): DrmDataSet[Int] = {
-    val rows = (0 until m.nrow).map(i => (i, m(i, ::))).toSeq.sortWith((ii, jj) => ii._1 < jj._1)
+    val rows = (0 until m.nrow).map(i => (i, m(i, ::)))//.toSeq.sortWith((ii, jj) => ii._1 < jj._1)
     val dataSetType = TypeExtractor.getForObject(rows.head)
-    dc.env.fromCollection(rows).partitionByRange(0).setParallelism(parallelismDegree)
+    //dc.env.fromCollection(rows).partitionByRange(0).setParallelism(parallelismDegree).rebalance
+    dc.env.fromCollection(rows).partitionByRange(0).setParallelism(parallelismDegree).rebalance
   }
 
   /** Parallelize in-core matrix as spark distributed matrix, using row labels as a data set keys. */
@@ -324,8 +326,6 @@ object FlinkEngine extends DistributedEngine {
       createTypeInformation[Long].asInstanceOf[TypeInformation[K]]
     } else if (tag.runtimeClass.equals(classOf[String])) {
       createTypeInformation[String].asInstanceOf[TypeInformation[K]]
-    } else if (tag.runtimeClass.equals(classOf[Any])) {
-      createTypeInformation[Any].asInstanceOf[TypeInformation[K]]
     } else {
       throw new IllegalArgumentException(s"index type $tag is not supported")
     }

@@ -24,7 +24,10 @@ import org.apache.mahout.flinkbindings.drm.CheckpointedFlinkDrm
 import org.apache.mahout.math._
 import org.apache.mahout.math.drm._
 import org.apache.mahout.math.drm.logical.{OpAx, _}
-import org.apache.mahout.math.scalabindings.RLikeOps._
+import org.apache.mahout.math._
+import scalabindings._
+import RLikeOps._
+import RLikeDrmOps._
 import org.apache.mahout.math.scalabindings._
 import org.junit.runner.RunWith
 import org.scalatest.FunSuite
@@ -33,18 +36,23 @@ import org.scalatest.junit.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class AndyTestSuite extends FunSuite with DistributedFlinkSuite {
 
-  test("Ax blockified") {
-    val inCoreA = dense((1, 2, 3), (2, 3, 4), (3, 4, 5))
+  test("A blockified") {
+    val inCoreA = dense((1, 2, 3), (2, 3, 4), (3, 4, 5), (4, 5, 6), (5, 6, 7) )
     val A = drmParallelize(m = inCoreA, numPartitions = 2)
     val x: Vector = (0, 1, 2)
 
-    val opAx = new OpAx(A, x)
-    val res = FlinkOpAx.blockifiedBroadcastAx(opAx, A)
-    val drm = new CheckpointedFlinkDrm(res.asRowWise.ds)
-    val output = drm.collect
+    printf("A: InCore = \n%s\n",inCoreA)
+    printf("x: Vector = \n%s\n",x)
+    val xBcast = drmBroadcast(x)
+    A.mapBlock(){
+      case (keys, block) => {
+        printf("xBcast: Vector = \n%s\n", xBcast.value)
 
-    val b = output(::, 0)
-    assert(b == dvec(8, 11, 14))
+        (keys -> block)
+      }
+    }
+
+    A.rowSums
   }
 
 

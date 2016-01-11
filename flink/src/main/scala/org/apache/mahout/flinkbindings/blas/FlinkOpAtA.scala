@@ -47,7 +47,7 @@ object FlinkOpAtA {
   }
 
   def slim[K: ClassTag](op: OpAtA[_], A: FlinkDrm[_]): Matrix = {
-    val ds = A.asBlockified.ds.asInstanceOf[DataSet[(Array[Any], Matrix)]]
+    val ds = A.asBlockified.ds.asInstanceOf[DataSet[(Array[K], Matrix)]]
 
     val res = ds.map {
       // TODO: optimize it: use upper-triangle matrices like in Spark

@@ -40,6 +40,8 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
       private var _canHaveMissingRows: Boolean = false
   ) extends CheckpointedDrm[K] {
 
+  override val keyClassTag: ClassTag[K] = classTag[K]
+
   lazy val nrow: Long = if (_nrow >= 0) _nrow else dim._1
   lazy val ncol: Int = if (_ncol >= 0) _ncol else dim._2
 
@@ -62,7 +64,7 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
   }
 
 
-  override val keyClassTag: ClassTag[K] = classTag[K]
+
 
   def cache() = {
     // TODO
