@@ -161,7 +161,8 @@ object FlinkEngine extends DistributedEngine {
     case op @ OpABAnyKey(a, b) if extractRealClassTag(a) != extractRealClassTag(b) =>
       throw new IllegalArgumentException("DRMs A and B have different indices, cannot multiply them")
     case op: OpMapBlock[K, _] =>
-      implicit val typeInformation = generateTypeInformation[K]
+//      implicit val typeInformation = generateTypeInformation[K]
+      implicit val typeInformation = createTypeInformation[Int].asInstanceOf[TypeInformation[K]]
       FlinkOpMapBlock.apply(flinkTranslate(op.A)(op.classTagA), op.ncol, op.bmf)
     case cp: CheckpointedFlinkDrm[K] =>
 //      implicit val typeInformation = generateTypeInformation[K]
