@@ -42,6 +42,10 @@ class CheckpointedFlinkDrm[K: ClassTag](val ds: DrmDataSet[K],
 
   override val keyClassTag: ClassTag[K] = classTag[K]
 
+  if (keyClassTag == ClassTag.Any){
+    throw new IllegalStateException("Illegal ClassTag Type: Any")
+  }
+
   lazy val nrow: Long = if (_nrow >= 0) _nrow else dim._1
   lazy val ncol: Int = if (_ncol >= 0) _ncol else dim._2
 

@@ -20,6 +20,8 @@ package org.apache.mahout.flinkbindings.blas
 
 import java.lang.Iterable
 
+import org.apache.flink.api.common.typeinfo.TypeInformation
+
 import scala.collection.JavaConverters.asScalaBufferConverter
 import scala.reflect.ClassTag
 
@@ -46,7 +48,7 @@ import org.apache.flink.api.scala._
  */
 object FlinkOpAtB {
 
-  def notZippable[K: ClassTag](op: OpAtB[K], At: FlinkDrm[K], B: FlinkDrm[K]): FlinkDrm[Int] = {
+  def notZippable[K: TypeInformation: ClassTag](op: OpAtB[K], At: FlinkDrm[K], B: FlinkDrm[K]): FlinkDrm[Int] = {
 
     val rowsAt = At.asRowWise.ds.asInstanceOf[DrmDataSet[K]]
     val rowsB = B.asRowWise.ds.asInstanceOf[DrmDataSet[K]]
@@ -87,7 +89,7 @@ object FlinkOpAtB {
       }
     })
 
-    new BlockifiedFlinkDrm[Int](res, ncol)
+    new BlockifiedFlinkDrm(res, ncol)
   }
 
 }

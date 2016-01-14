@@ -98,8 +98,8 @@ object FlinkEngine extends DistributedEngine {
   override def toPhysical[K: ClassTag](plan: DrmLike[K], ch: CacheHint.CacheHint): CheckpointedDrm[K] = {
     // Flink-specific Physical Plan translation.
     implicit val typeInformation = generateTypeInformation[K]
-    val drm = flinkTranslate[K](plan)
-    val newcp = new CheckpointedFlinkDrm(ds = drm.asRowWise.ds, _nrow = plan.nrow, _ncol = plan.ncol)
+    val drm = flinkTranslate(plan)//(typeInformation, plan.keyClassTag)
+    val newcp = new CheckpointedFlinkDrm(ds = drm.asRowWise.ds, _nrow = plan.nrow, _ncol = plan.ncol)(drm.keyClassTag)
     newcp.cache()
   }
 
@@ -107,67 +107,103 @@ object FlinkEngine extends DistributedEngine {
     case op @ OpAx(a, x) =>
       implicit val typeInformation = generateTypeInformation[K]
       FlinkOpAx.blockifiedBroadcastAx(op, flinkTranslate(a)(op.classTagA))
-    case op @ OpAt(a) => FlinkOpAt.sparseTrick(op, flinkTranslate(a)(op.classTagA))
+    case op @ OpAt(a) =>
+      implicit val typeInformation = generateTypeInformation[K]
+      FlinkOpAt.sparseTrick(op, flinkTranslate(a)(op.classTagA))(typeInformation,op.classTagA)
     case op @ OpAtx(a, x) =>
       // express Atx as (A.t) %*% x
       // TODO: create specific implementation of Atx, see MAHOUT-1749
+      implicit val typeInformation = generateTypeInformation[K]
+
       val opAt = OpAt(a)
-      val at = FlinkOpAt.sparseTrick(opAt, flinkTranslate(a)(op.classTagA))
+      val at = FlinkOpAt.sparseTrick(opAt, flinkTranslate(a)(op.classTagA))(typeInformation,op.classTagA)
       val atCast = new CheckpointedFlinkDrm(at.asRowWise.ds, _nrow=opAt.nrow, _ncol=opAt.ncol)(op.classTagA)
       val opAx = OpAx(atCast, x)
-      FlinkOpAx.blockifiedBroadcastAx(opAx, flinkTranslate(atCast)(op.classTagA))
-    case op @ OpAtB(a, b) => FlinkOpAtB.notZippable(op, flinkTranslate(a)(op.classTagA), 
-        flinkTranslate(b)(op.classTagA))
+      FlinkOpAx.blockifiedBroadcastAx(opAx, flinkTranslate(atCast)(op.classTagA)).asInstanceOf[FlinkDrm[K]]
+    case op @ OpAtB(a, b) =>
+      implicit val typeInformation = generateTypeInformation[K]
+
+      FlinkOpAtB.notZippable(op, flinkTranslate(a)(op.classTagA),
+        flinkTranslate(b)(op.classTagA)).asInstanceOf[FlinkDrm[K]]
     case op @ OpABt(a, b) =>
+      implicit val typeInformation = generateTypeInformation[K]
+
       // express ABt via AtB: let C=At and D=Bt, and calculate CtD
       // TODO: create specific implementation of ABt, see MAHOUT-1750
-      val opAt = OpAt(a.asInstanceOf[DrmLike[Int]]) // TODO: casts!
-      val at = FlinkOpAt.sparseTrick(opAt, flinkTranslate(a.asInstanceOf[DrmLike[Int]]))
+      val opAt = OpAt(a.asInstanceOf[FlinkDrm[Int]]) // TODO: casts!
+      val at = FlinkOpAt.sparseTrick(opAt, flinkTranslate(a.asInstanceOf[FlinkDrm[Int]])
+                 (op.classTagA))
+                 (typeInformation,op.keyClassTag)
       val c = new CheckpointedFlinkDrm(at.asRowWise.ds, _nrow=opAt.nrow, _ncol=opAt.ncol)
-
-      val opBt = OpAt(b.asInstanceOf[DrmLike[Int]]) // TODO: casts!
-      val bt = FlinkOpAt.sparseTrick(opBt, flinkTranslate(b.asInstanceOf[DrmLike[Int]]))
+                    (op.classTagA)
+      val opBt = OpAt(b.asInstanceOf[FlinkDrm[Int]]) // TODO: casts!
+      val bt = FlinkOpAt.sparseTrick(opBt, flinkTranslate(b)
+                    (op.classTagA))(typeInformation,op.keyClassTag)
       val d = new CheckpointedFlinkDrm(bt.asRowWise.ds, _nrow=opBt.nrow, _ncol=opBt.ncol)
+                    (op.classTagA)
+      FlinkOpAtB.notZippable(OpAtB(c, d),
+                             flinkTranslate(c)(op.classTagA),
+                             flinkTranslate(d)(op.classTagA))
+                            (typeInformation,op.keyClassTag)
+    case op @ OpAtA(a) =>
+      implicit val typeInformation = generateTypeInformation[K]
 
-      FlinkOpAtB.notZippable(OpAtB(c, d), flinkTranslate(c), flinkTranslate(d)).asInstanceOf[FlinkDrm[K]]
-    case op @ OpAtA(a) => FlinkOpAtA.at_a(op, flinkTranslate(a)(op.classTagA))
+      FlinkOpAtA.at_a(op, flinkTranslate(a)(op.classTagA))
     case op @ OpTimesRightMatrix(a, b) =>
       implicit val typeInformation = generateTypeInformation[K]
       FlinkOpTimesRightMatrix.drmTimesInCore(op, flinkTranslate(a)(op.classTagA), b)
+                                            (typeInformation,op.classTagA)
     case op @ OpAewUnaryFunc(a, _, _) =>
       implicit val typeInformation = generateTypeInformation[K]
       FlinkOpAewScalar.opUnaryFunction(op, flinkTranslate(a)(op.classTagA))
+                                      (typeInformation,op.classTagA)
     case op @ OpAewUnaryFuncFusion(a, _) =>
       implicit val typeInformation = generateTypeInformation[K]
       FlinkOpAewScalar.opUnaryFunction(op, flinkTranslate(a)(op.classTagA))
+                                      (typeInformation,op.classTagA)
     // deprecated
     case op @ OpAewScalar(a, scalar, _) =>
       implicit val typeInformation = generateTypeInformation[K]
-      FlinkOpAewScalar.opScalarNoSideEffect(op, flinkTranslate(a)(op.classTagA), scalar)
+      FlinkOpAewScalar.opScalarNoSideEffect(op, flinkTranslate(a)(op.classTagA), scalar)(typeInformation,op.classTagA)
     case op @ OpAewB(a, b, _) =>
       implicit val typeInformation = generateTypeInformation[K]
-      FlinkOpAewB.rowWiseJoinNoSideEffect(op, flinkTranslate(a)(op.classTagA), flinkTranslate(b)(op.classTagA))
+      FlinkOpAewB.rowWiseJoinNoSideEffect(op, flinkTranslate(a)(op.classTagA), flinkTranslate(b)(op.classTagA))(typeInformation,op.classTagA)
     case op @ OpCbind(a, b) =>
       implicit val typeInformation = generateTypeInformation[K]
-      FlinkOpCBind.cbind(op, flinkTranslate(a)(op.classTagA), flinkTranslate(b)(op.classTagA))
+      FlinkOpCBind.cbind(op, flinkTranslate(a)(op.classTagA), flinkTranslate(b)(op.classTagA))(typeInformation,op.classTagA)
     case op @ OpRbind(a, b) =>
       implicit val typeInformation = generateTypeInformation[K]
-      FlinkOpRBind.rbind(op, flinkTranslate(a)(op.classTagA), flinkTranslate(b)(op.classTagA))
+      FlinkOpRBind.rbind(op, flinkTranslate(a)(op.classTagA), flinkTranslate(b)(op.classTagA))(typeInformation,op.classTagA)
     case op @ OpCbindScalar(a, x, _) =>
       implicit val typeInformation = generateTypeInformation[K]
-      FlinkOpCBind.cbindScalar(op, flinkTranslate(a)(op.classTagA), x)
+      FlinkOpCBind.cbindScalar(op, flinkTranslate(a)(op.classTagA), x)(typeInformation,op.classTagA)
     case op @ OpRowRange(a, _) =>
-      FlinkOpRowRange.slice(op, flinkTranslate(a)(op.classTagA))
+      implicit val typeInformation = generateTypeInformation[K]
+      FlinkOpRowRange.slice(op, flinkTranslate(a)(op.classTagA)).asInstanceOf[FlinkDrm[K]]
     case op @ OpABAnyKey(a, b) if extractRealClassTag(a) != extractRealClassTag(b) =>
       throw new IllegalArgumentException("DRMs A and B have different indices, cannot multiply them")
-    case op: OpMapBlock[K, _] =>
+//    case op: OpMapBlock[K, _] =>
 //      implicit val typeInformation = generateTypeInformation[K]
-      implicit val typeInformation = createTypeInformation[Int].asInstanceOf[TypeInformation[K]]
-      FlinkOpMapBlock.apply(flinkTranslate(op.A)(op.classTagA), op.ncol, op.bmf)
+////      implicit val typeInformation = createTypeInformation[Int].asInstanceOf[TypeInformation[K]]
+//      FlinkOpMapBlock.apply(flinkTranslate(op.A)(op.classTagA), op.ncol, op.bmf)(typeInformation,op.classTagA)
+    case blockOp: OpMapBlock[K, _] ⇒
+      if(implicitly[ClassTag[K]].runtimeClass.equals(classOf[Any])) {
+        throw new IllegalStateException("What The fuck MapBlock?")
+      }
+
+      implicit val typeInformation = generateTypeInformation[K]
+      FlinkOpMapBlock.apply(src = flinkTranslate(blockOp.A)(blockOp.classTagA),
+                            ncol= blockOp.ncol,
+                            function = blockOp.bmf)
+
     case cp: CheckpointedFlinkDrm[K] =>
-//      implicit val typeInformation = generateTypeInformation[K]
-      implicit val typeInformation = createTypeInformation[Int].asInstanceOf[TypeInformation[K]]
-      new RowsFlinkDrm(cp.ds, cp.ncol)
+
+      if(implicitly[ClassTag[K]].runtimeClass.equals(classOf[Any])) {
+        throw new IllegalStateException("What The fuck checkpoint??")
+      }
+      implicit val typeInformation = generateTypeInformation[K]
+      //implicit val typeInformation = createTypeInformation[Int].asInstanceOf[TypeInformation[K]]
+      new RowsFlinkDrm(cp.ds, cp.ncol)(cp.keyClassTag)
     case _ => throw new NotImplementedError(s"operator $oper is not implemented yet")
   }
 

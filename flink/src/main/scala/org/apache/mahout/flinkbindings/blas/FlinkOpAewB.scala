@@ -40,7 +40,7 @@ object FlinkOpAewB {
           }
       }
 
-    new RowsFlinkDrm(res.asInstanceOf[DataSet[(K, Vector)]], ncol=op.ncol)
+    new RowsFlinkDrm(res.asInstanceOf[DataSet[(K, Vector)]], nCol=op.ncol)
   }
 }
 

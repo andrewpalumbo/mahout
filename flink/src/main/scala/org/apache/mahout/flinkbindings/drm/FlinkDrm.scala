@@ -21,32 +21,48 @@ package org.apache.mahout.flinkbindings.drm
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala._
 import org.apache.mahout.flinkbindings.{BlockifiedDrmDataSet, DrmDataSet, FlinkDistributedContext, wrapContext}
+import org.apache.mahout.math.drm.{CheckpointedDrm, CacheHint, DrmLike}
 import org.apache.mahout.math.scalabindings.RLikeOps._
 import org.apache.mahout.math.scalabindings._
 import org.apache.mahout.math.{DenseMatrix, Matrix, SparseRowMatrix}
 
-import scala.reflect.ClassTag
+import scala.math._
+import scala.reflect._
+import scala.util.Random
 
-trait FlinkDrm[K] {
+trait FlinkDrm[K] extends DrmLike[K] {
   def executionEnvironment: ExecutionEnvironment
-  def context: FlinkDistributedContext
+  val context: FlinkDistributedContext
   def isBlockified: Boolean
 
   def asBlockified: BlockifiedFlinkDrm[K]
   def asRowWise: RowsFlinkDrm[K]
 
-  def classTag: ClassTag[K]
+  //val keyClassTag: ClassTag[K] = implicitly[ClassTag[K]]
 }
 
-class RowsFlinkDrm[K: TypeInformation: ClassTag](val ds: DrmDataSet[K], val ncol: Int) extends FlinkDrm[K] {
+class RowsFlinkDrm[K: TypeInformation: ClassTag](val ds: DrmDataSet[K], val nCol: Int) extends FlinkDrm[K] {
 
   def executionEnvironment = ds.getExecutionEnvironment
-  def context: FlinkDistributedContext = ds.getExecutionEnvironment
+  val context: FlinkDistributedContext = ds.getExecutionEnvironment
 
   def isBlockified = false
+  
+  override def canHaveMissingRows = true
+  override def partitioningTag: Long = Random.nextLong()
+  def checkpoint(cacheHint: CacheHint.CacheHint): CheckpointedDrm[K] = {
+    this
+  }
+
+  /** R-like syntax for number of rows. */
+  lazy val nrow: Long = ds.count()
+
+  /** R-like syntax for number of columns */
+  def ncol: Int = nCol
+
 
   def asBlockified : BlockifiedFlinkDrm[K] = {
-    val ncolLocal = ncol
+    val ncolLocal = nCol
     val classTag = implicitly[ClassTag[K]]
 
     val parts = ds.mapPartition {
@@ -69,19 +85,37 @@ class RowsFlinkDrm[K: TypeInformation: ClassTag](val ds: DrmDataSet[K], val ncol
         }
     }
 
-    new BlockifiedFlinkDrm[K](parts, ncol)
+    new BlockifiedFlinkDrm(parts, nCol)
   }
 
   def asRowWise = this
 
-  def classTag = implicitly[ClassTag[K]]
+ val keyClassTag = implicitly[ClassTag[K]]
+  if (keyClassTag == ClassTag.Any){
+    throw new IllegalStateException("Illegal ClassTag Type: Any")
+  }
+
 
 }
 
-class BlockifiedFlinkDrm[K: TypeInformation: ClassTag](val ds: BlockifiedDrmDataSet[K], val ncol: Int) extends FlinkDrm[K] {
+class BlockifiedFlinkDrm[K: TypeInformation: ClassTag](val ds: BlockifiedDrmDataSet[K], val nCol: Int) extends FlinkDrm[K] {
 
   def executionEnvironment = ds.getExecutionEnvironment
-  def context: FlinkDistributedContext = ds.getExecutionEnvironment
+  val context: FlinkDistributedContext = ds.getExecutionEnvironment
+
+  override def canHaveMissingRows = true
+  override def partitioningTag: Long = Random.nextLong()
+  def checkpoint(cacheHint: CacheHint.CacheHint): CheckpointedDrm[K] = {
+    this
+  }
+
+  /** R-like syntax for number of rows. */
+  lazy val nrow: Long = ds.count()
+
+  /** R-like syntax for number of columns */
+  def ncol: Int = nCol
+
+
 
   def isBlockified = true
 
@@ -98,8 +132,11 @@ class BlockifiedFlinkDrm[K: TypeInformation: ClassTag](val ds: BlockifiedDrmData
         }
     }
 
-    new RowsFlinkDrm(out, ncol)
+    new RowsFlinkDrm(out, nCol)
   }
 
-  def classTag = implicitly[ClassTag[K]]
+  val keyClassTag = implicitly[ClassTag[K]]
+  if (keyClassTag == ClassTag.Any){
+    throw new IllegalStateException("Illegal ClassTag Type: Any")
+  }
 }

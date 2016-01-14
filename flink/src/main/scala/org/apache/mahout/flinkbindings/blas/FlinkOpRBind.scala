@@ -33,7 +33,7 @@ object FlinkOpRBind {
   def rbind[K: TypeInformation: ClassTag](op: OpRbind[K], A: FlinkDrm[K], B: FlinkDrm[K]): FlinkDrm[K] = {
     // note that indexes of B are already re-arranged prior to executing this code
     val res = A.asRowWise.ds.union(B.asRowWise.ds)
-    new RowsFlinkDrm(res.asInstanceOf[DataSet[(K, Vector)]], ncol = op.ncol)
+    new RowsFlinkDrm(res.asInstanceOf[DataSet[(K, Vector)]], nCol = op.ncol)
   }
 
 }

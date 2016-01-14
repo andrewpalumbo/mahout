@@ -18,6 +18,7 @@
  */
 package org.apache.mahout.flinkbindings.blas
 
+import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.scala._
 import org.apache.mahout.flinkbindings.drm.{FlinkDrm, RowsFlinkDrm}
 import org.apache.mahout.math.{SequentialAccessSparseVector, Vector}
@@ -25,6 +26,7 @@ import org.apache.mahout.math.drm.logical.OpAt
 import org.apache.mahout.math.scalabindings.RLikeOps._
 
 import scala.Array.canBuildFrom
+import scala.reflect.ClassTag
 
 /**
  * Implementation is taken from Spark's At
@@ -37,7 +39,7 @@ object FlinkOpAt {
    * vectors of the <code>A.nrow</code> length; then group them by their column index and sum the
    * groups into final rows of the transposed matrix.
    */
-  def sparseTrick(op: OpAt, A: FlinkDrm[Int]): FlinkDrm[Int] = {
+  def sparseTrick[K: TypeInformation: ClassTag](op: OpAt, A: FlinkDrm[Int]): FlinkDrm[Int] = {
     val ncol = op.ncol // # of rows of A, i.e. # of columns of A^T
 
     val sparseParts = A.asBlockified.ds.flatMap {

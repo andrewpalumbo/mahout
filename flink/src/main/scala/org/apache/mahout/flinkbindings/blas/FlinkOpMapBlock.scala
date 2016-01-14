@@ -34,7 +34,9 @@ import org.apache.mahout.math.scalabindings.RLikeOps._
  */
 object FlinkOpMapBlock {
 
-  def apply[S, R: TypeInformation: ClassTag](src: FlinkDrm[S], ncol: Int, function: BlockMapFunc[S, R]): FlinkDrm[R] = {
+  def apply[S, R: TypeInformation: ClassTag](src: FlinkDrm[S],
+                                             ncol: Int,
+                                             function: BlockMapFunc[S, R]): FlinkDrm[R] = {
     val res = src.asBlockified.ds.map {
       block =>
         val result = function(block)
@@ -44,6 +46,6 @@ object FlinkOpMapBlock {
         result
     }
 
-    new BlockifiedFlinkDrm[R](res, ncol)
+    new BlockifiedFlinkDrm(res, ncol)
   }
 }

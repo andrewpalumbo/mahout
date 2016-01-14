@@ -93,7 +93,7 @@ object FlinkOpCBind {
           }
       }
 
-    new RowsFlinkDrm(res.asInstanceOf[DataSet[(K, Vector)]], ncol=op.ncol)
+    new RowsFlinkDrm(res.asInstanceOf[DataSet[(K, Vector)]], nCol=op.ncol)
   }
 
   def cbindScalar[K: TypeInformation: ClassTag](op: OpCbindScalar[K], A: FlinkDrm[K], x: Double): FlinkDrm[K] = {
