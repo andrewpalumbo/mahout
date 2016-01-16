@@ -131,7 +131,7 @@ object FlinkEngine extends DistributedEngine {
       // express ABt via AtB: let C=At and D=Bt, and calculate CtD
       // TODO: create specific implementation of ABt, see MAHOUT-1750
       val opAt = OpAt(a.asInstanceOf[FlinkDrm[Int]]) // TODO: casts!
-      val at = FlinkOpAt.sparseTrick(opAt, flinkTranslate(a.asInstanceOf[FlinkDrm[Int]])
+      val at = FlinkOpAt.sparseTrick(opAt, flinkTranslate(a.asInstanceOf[FlinkDrm[Int]]).asInstanceOf[FlinkDrm[K]]
                  (op.classTagA))
                  (typeInformation,op.keyClassTag)
       val c = new CheckpointedFlinkDrm(at.asRowWise.ds, _nrow=opAt.nrow, _ncol=opAt.ncol)
@@ -141,10 +141,10 @@ object FlinkEngine extends DistributedEngine {
                     (op.classTagA))(typeInformation,op.keyClassTag)
       val d = new CheckpointedFlinkDrm(bt.asRowWise.ds, _nrow=opBt.nrow, _ncol=opBt.ncol)
                     (op.classTagA)
-      FlinkOpAtB.notZippable(OpAtB(c, d),
+      (FlinkOpAtB.notZippable(OpAtB(c, d),
                              flinkTranslate(c)(op.classTagA),
                              flinkTranslate(d)(op.classTagA))
-                            (typeInformation,op.keyClassTag)
+                            (typeInformation,op.keyClassTag)).asInstanceOf[FlinkDrm[K]]
     case op @ OpAtA(a) =>
       implicit val typeInformation = generateTypeInformation[K]
 
