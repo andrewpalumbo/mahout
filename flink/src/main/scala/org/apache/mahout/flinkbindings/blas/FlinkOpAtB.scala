@@ -61,6 +61,7 @@ object FlinkOpAtB {
     val prodNCol = operator.ncol
     val prodNRow = safeToNonNegInt(operator.nrow)
     val aNRow = safeToNonNegInt(operator.A.nrow)
+    val bNRow = safeToNonNegInt(operator.B.nrow)
 
     val rowsAt = At.asRowWise.ds.asInstanceOf[DrmDataSet[A]]
     val rowsB = B.asRowWise.ds.asInstanceOf[DrmDataSet[A]]
@@ -95,7 +96,7 @@ object FlinkOpAtB {
     // Approximate number of final partitions. We take bigger partitions as our guide to number of
     // elements per partition. TODO: do it better.
     // Elements per partition, bigger of two operands.
-    val epp = aNRow.toDouble * prodNRow / aPartitions max aNRow.toDouble * prodNCol /
+    val epp = aNRow.toDouble * prodNRow / aPartitions max  aNRow.toDouble * prodNCol /
       bPartitions
 
     // Number of partitions we want to converge to in the product. For now we simply extrapolate that
@@ -109,6 +110,8 @@ object FlinkOpAtB {
     //val numProductPartitions = (prodNCol.toDouble * prodNRow / epp).ceil.toInt
 
 
+    //val largerPrtition =  aPartitions max bPartitions
+    val blockCount = safeToNonNegInt((aNRow - 1) / blockHeight + 1)
 
 
     val preProduct: DataSet[(Int, Matrix)] =
@@ -119,7 +122,7 @@ object FlinkOpAtB {
 
 
 //        0.until((bPartitions max  aPartitions)) map { blockKey =>
-          0.until((numProductPartitions)) map { blockKey =>
+          0.until((blockCount)) map { blockKey =>
           val blockStart = blockKey * blockHeight
           val blockEnd = prodNCol min (blockStart + blockHeight)
 
