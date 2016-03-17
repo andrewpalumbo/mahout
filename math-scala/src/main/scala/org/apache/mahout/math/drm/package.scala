@@ -269,6 +269,12 @@ package object drm {
       // Apply second part of the formula as per in-core algorithm
       .mapBlock() { case (keys, block) ⇒
 
+     // if (!(keys.size == block.nrow )){
+      //  println("\n\ndifferent key sizes than block size!!!!!!!!!!!")
+        println("\n\n keys.size: "+keys.size+"  Block rows: " + block.nrow +"\n\n")
+    //  }
+
+
       // Slurp broadcast to memory
       val s = sBcast: Vector
 
@@ -313,6 +319,11 @@ package object drm {
       // Cache broadcast representations in local task variable
       val s = sBcast: Vector
       val t = tBcast: Vector
+
+      if (!(keys.size == block.nrow )){
+        println("\n\ndifferent key sizes than block size!!!!!!!!!!!")
+        println("\n keys.size: "+keys.size+"  Block rows: " + block.nrow )
+      }
 
       block := { (r, c, x) => s(keys(r)) + t(c) - 2 * x}
       keys → block

@@ -113,22 +113,28 @@ class FailingTestsSuite extends FunSuite with DistributedFlinkSuite with Matcher
 
     (inCoreC - inCoreCControl).norm should be < 1E-10
   }
-//// Passing now.
-//  test("C = inCoreA %*%: B") {
-//
-//    val inCoreA = dense((1, 2, 3), (3, 4, 5), (4, 5, 6), (5, 6, 7))
-//    val inCoreB = dense((3, 5, 7, 10), (4, 6, 9, 10), (5, 6, 7, 7))
-//
-//    val B = drmParallelize(inCoreB, numPartitions = 2)
-//    val C = inCoreA %*%: B
-//
-//    val inCoreC = C.collect
-//    val inCoreCControl = inCoreA %*% inCoreB
-//
-//    println(inCoreC)
-//    (inCoreC - inCoreCControl).norm should be < 1E-10
-//
-//  }
+  // test checkpointing- should test.  also sanity teat for AtB
+  test("Checkpoint test") {
+
+    val inCoreA = dense((1, 2, 3), (3, 4, 5), (4, 5, 6), (5, 6, 7))
+    val inCoreB = inCoreA.like := { (r, c, v) => util.Random.nextDouble()}
+
+    val A = drmParallelize(inCoreA, numPartitions = 2)
+    val B = drmParallelize(inCoreB, numPartitions = 2).checkpoint()
+
+    val C = (B %*% A.t)
+
+    val D = (B %*% A.t)
+
+
+
+    val inCoreC = C.collect
+    val inCoreD = D.collect
+
+    println(inCoreC)
+    (inCoreC - inCoreD).norm should be < 1E-10
+
+  }
 
   test("dsqDist(X,Y)") {
     val m = 100
