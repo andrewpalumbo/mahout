@@ -320,8 +320,34 @@ object FlinkEngine extends DistributedEngine {
    * Convert non-int-keyed matrix to an int-keyed, computing optionally mapping from old keys
    * to row indices in the new one. The mapping, if requested, is returned as a 1-column matrix.
    */
-  def drm2IntKeyed[K](drmX: DrmLike[K], computeMap: Boolean = false):
-          (DrmLike[Int], Option[DrmLike[K]]) = ???
+  def drm2IntKeyed[K](drmX: DrmLike[K], computeMap: Boolean = false): (DrmLike[Int], Option[DrmLike[K]]) = {
+    implicit val ktag = drmX.keyClassTag
+    if (ktag == ClassTag.Int) {
+      drmX.asInstanceOf[DrmLike[Int]] → None
+    } else {
+      val drmXcp = drmX.checkpoint(CacheHint.MEMORY_ONLY)
+      val ncol = drmXcp.asInstanceOf[CheckpointedFlinkDrm[K]].ncol
+      val nrow = drmXcp.asInstanceOf[CheckpointedFlinkDrm[K]].nrow
+
+      // Compute sequential int key numbering.
+      val (intDataset, keyMap) = blas.rekeySeqInts(drmDataSet = drmXcp, computeMap = computeMap)
+
+      // Convert computed key mapping to a matrix.
+      val mxKeyMap = keyMap.map { dataSet ⇒
+        dataSet.map {
+          tuple => {
+            val ordinal = tuple._2
+            val key = tuple._1
+            key -> (dvec(ordinal): Vector)
+          }
+          val ncol = 1
+          val nrow = nrow
+        }
+      }
+
+      intDataset -> mxKeyMap
+    }
+  }
 
   /**
    * (Optional) Sampling operation.
