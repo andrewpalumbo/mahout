@@ -25,9 +25,14 @@ import org.apache.flink.api.scala._
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.util.Collector
 import org.apache.mahout.flinkbindings.drm.{FlinkDrm, RowsFlinkDrm}
+import org.apache.mahout.math.drm.DrmLike
 import org.apache.mahout.math.{RandomAccessSparseVector, Vector}
+import org.apache.mahout.math.scalabindings._
+import RLikeOps._
+import org.apache.flink.api.common.typeinfo.TypeInformation
 
 import scala.collection._
+import scala.reflect.ClassTag
 
 package object blas {
 
@@ -60,8 +65,10 @@ package object blas {
     * @tparam K existing key parameter
     * @return
     */
-  private[mahout] def rekeySeqInts[K](drmDataSet: FlinkDrm[K], computeMap: Boolean = true): (FlinkDrm[Int],
+  private[mahout] def rekeySeqInts[K:ClassTag:TypeInformation](drmDataSet: FlinkDrm[K], computeMap: Boolean = true): (DrmLike[Int],
     Option[DataSet[(K, Int)]]) = {
+
+    implicit val dc = drmDataSet.context
 
     val datasetA = drmDataSet.asRowWise.ds
 
@@ -88,6 +95,7 @@ package object blas {
 
     val bCast = FlinkEngine.drmBroadcast(vector)
 
+    implicit val typeInformation = createTypeInformation[(K, Int)]
     // Compute key -> int index map:
     val keyMap = if (computeMap) {
       Some(
