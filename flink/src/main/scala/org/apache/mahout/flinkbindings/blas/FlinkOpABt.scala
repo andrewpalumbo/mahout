@@ -141,7 +141,7 @@ object FlinkOpABt {
                    val colKeys = tuple._2._2
                    val block = tuple._2._3
 
-                   // initalize the combiner as a sparse matrix.
+                   // initialize the combiner as a sparse matrix.
                    // set each row of the transposed combiner to the column
                    // of the already block wise multiplied Matrix
                    val comb = new SparseMatrix(prodNCol, block.nrow).t
@@ -149,14 +149,6 @@ object FlinkOpABt {
                    out.collect((rowKeys, comb), (rowKeys, colKeys, block))
               }
             })
-
-    // Combiner += value
-//    mergeValue = (comb: (Array[K], Matrix), value: (Array[K], Array[Int], Matrix)) => {
-//      val (rowKeys, c) = comb
-//      val (_, colKeys, block) = value
-//      for ((col, i) <- colKeys.zipWithIndex) c(::, col) := block(::, i)
-//      comb
-//    },
 
 
              // combine all members of each group into the above defined combiner
@@ -175,7 +167,6 @@ object FlinkOpABt {
                   for ((col, i) <- colKeys.zipWithIndex) c(::, col) := block(::, i)
 
                   out.collect(rowKeys -> c)
-//                  out.collect(tuple._1)
 
                 }
              })
@@ -245,7 +236,7 @@ object FlinkOpABt {
          }
       })
 
-      // calcuate actual number of non empty partitions used by blocksA
+      // calculate actual number of non empty partitions used by blocksA
       // we'll need this to key blocksB with the correct partition numbers
       // to join upon.  blocksA may use partitions 0,1 and blocksB may use partitions 2,3.
       val aNonEmptyParts = blocksA.map(new MapFunction[(Array[K1], Matrix), Int] {
@@ -260,27 +251,45 @@ object FlinkOpABt {
         def reduce(a: Int, b: Int): Int = a + b
       }).collect().head
 
+      // calculate actual number of non empty partitions used by blocksB
+      // we'll need this to key blocksB with the correct partition numbers
+      // to join upon.  blocksA may use partitions 0,1 and blocksB may use partitions 2,3.
+      val bNonEmptyParts = blocksB.map(new MapFunction[(Array[K2], Matrix), Int] {
+        def map(a: (Array[K2], Matrix)): Int = {
+          if (a._1.length > 0) {
+            1
+          } else {
+            0
+          }
+        }
+      }).reduce(new ReduceFunction[Int] {
+        def reduce(a: Int, b: Int): Int = a + b
+      }).collect().head
+
       println("\n\n\naNonEmptyPArts:"+aNonEmptyParts+"\n\n\n")
+      println("\n\n\nbNonEmptyPArts:"+bNonEmptyParts+"\n\n\n")
+
+      // throw away empty partitions
+      blocksAKeyed.setParallelism(aNonEmptyParts)
 
       // key the B blocks with the blocks of a assuming that they begin with 0 and are continuous
       // not sure if this assumption holds.
 
       implicit val typeInformationB = createTypeInformation[(Int, (Array[K2], Matrix))]
 
-
       val blocksBKeyed =
-            blocksB.setParallelism(aNonEmptyParts).flatMap(new FlatMapFunction[(Array[K2], Matrix), (Int, Array[K2], Matrix)] {
-              def flatMap(in: (Array[K2], Matrix), out: Collector[(Int, Array[K2], Matrix)]): Unit = {
+        blocksB.setParallelism(aNonEmptyParts).flatMap(new FlatMapFunction[(Array[K2], Matrix), (Int, Array[K2], Matrix)] {
+          def flatMap(in: (Array[K2], Matrix), out: Collector[(Int, Array[K2], Matrix)]): Unit = {
 
-                var partsB = 0
-                for (blockKey <- (0 until aNonEmptyParts)) {
-                  if(partsB < aNonEmptyParts) {
-                    out.collect((blockKey, in._1, in._2))
-                    partsB += 1
-                  }
-                }
+            var partsB = 0
+            for (blockKey <- (0 until aNonEmptyParts)) {
+              if(partsB < aNonEmptyParts) {
+                out.collect((blockKey, in._1, in._2))
+                partsB += 1
               }
-            })
+            }
+          }
+        })
 
 
 
@@ -323,9 +332,3 @@ object FlinkOpABt {
 
 
   }
-//
-//class BlockIDPartitioner extends FlinkPartitioner[Int] {
-//  override def partition(blockID: Int, numberOfPartitions: Int): Int = {
-//    blockID % numberOfPartitions
-//  }
-//}
