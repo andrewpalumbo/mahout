@@ -262,7 +262,7 @@ object FlinkEngine extends DistributedEngine {
                                         (implicit dc: DistributedContext): DrmDataSet[Int] = {
     val rows = (0 until m.nrow).map(i => (i, m(i, ::)))
     val dataSetType = TypeExtractor.getForObject(rows.head)
-    dc.env.fromCollection(rows).partitionByRange(0)
+    dc.env.fromCollection(rows)//.partitionByRange(0)
   }
 
   /** Parallelize in-core matrix as flink distributed matrix, using row labels as a data set keys. */

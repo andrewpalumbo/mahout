@@ -267,15 +267,16 @@ object FlinkOpABt {
 
       implicit val typeInformationB = createTypeInformation[(Int, (Array[K2], Matrix))]
 
+
       val blocksBKeyed =
-            blocksB.flatMap(new FlatMapFunction[(Array[K2], Matrix), (Int, Array[K2], Matrix)] {
+            blocksB.setParallelism(aNonEmptyParts).flatMap(new FlatMapFunction[(Array[K2], Matrix), (Int, Array[K2], Matrix)] {
               def flatMap(in: (Array[K2], Matrix), out: Collector[(Int, Array[K2], Matrix)]): Unit = {
 
                 var partsB = 0
                 for (blockKey <- (0 until aNonEmptyParts)) {
                   if(partsB < aNonEmptyParts) {
                     out.collect((blockKey, in._1, in._2))
-                    partsB = partsB + 1
+                    partsB += 1
                   }
                 }
               }
@@ -320,4 +321,11 @@ object FlinkOpABt {
       mapped
       }
 
+
   }
+//
+//class BlockIDPartitioner extends FlinkPartitioner[Int] {
+//  override def partition(blockID: Int, numberOfPartitions: Int): Int = {
+//    blockID % numberOfPartitions
+//  }
+//}
