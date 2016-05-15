@@ -177,11 +177,15 @@ object FlinkEngine extends DistributedEngine {
     * returns a vector that contains a column-wise sum from DRM
     */
   override def colSums[K](drm: CheckpointedDrm[K]): Vector = {
+    // force computation
     implicit val kTag: ClassTag[K] = drm.keyClassTag
     implicit val typeInformation = generateTypeInformation[K]
 
+    val plan = this.optimizerRewrite(drm)
+    val physPlan = this.toPhysical(plan, CacheHint.NONE)
+    val _drm = physPlan
 
-    val sum = drm.ds.map {
+    val sum = _drm.ds.map {
       tuple => tuple._2
     }.reduce(_ + _)
 

@@ -17,6 +17,8 @@
 
 package org.apache.mahout.flinkbindings.blas
 
+import java.util
+
 import org.apache.flink.api.scala._
 import org.apache.flink.api.common.functions._
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -42,6 +44,8 @@ import org.apache.mahout.math.scalabindings.RLikeOps._
 import scala.collection.JavaConverters._
 import scala.reflect.ClassTag
 import org.apache.flink.api.scala.createTypeInformation
+
+import scala.collection.JavaConversions
 
 /** Contains DataSet plans for ABt operator */
 object FlinkOpABt {
@@ -211,30 +215,7 @@ object FlinkOpABt {
       implicit val typeInformationA = createTypeInformation[(Int, Array[K1], Matrix)]
       implicit val typeInformationProd = createTypeInformation[(Int, (Array[K1], Array[Int], Matrix))]
 
-      // We will be joining blocks in B to blocks in A using A-partition as a key.
 
-      // Prepare A side.
-      val blocksAKeyed = blocksA.mapPartition( new RichMapPartitionFunction[(Array[K1], Matrix),
-                                                            (Int, Array[K1], Matrix)] {
-        // partition number
-        var part: Int = 0
-
-        // get the index of the partition
-        override def open(params: Configuration): Unit = {
-           part = getRuntimeContext.getIndexOfThisSubtask
-         }
-
-         // bind the partition number to each keySet/block
-         def mapPartition(values: java.lang.Iterable[(Array[K1], Matrix)], out: Collector[(Int, Array[K1], Matrix)]): Unit  = {
-
-           val blockIter = values.iterator()
-           if (blockIter.hasNext()) {
-             val r = part -> blockIter.next
-             require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
-             out.collect((r._1, r._2._1, r._2._2))
-           }
-         }
-      })
 
       // calculate actual number of non empty partitions used by blocksA
       // we'll need this to key blocksB with the correct partition numbers
@@ -266,31 +247,203 @@ object FlinkOpABt {
         def reduce(a: Int, b: Int): Int = a + b
       }).collect().head
 
+
+
+      // get the first key of each Partition
+      val blocksAFirstPartitionKey = blocksA.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K1], Matrix),
+        (Int, K1) ] {
+        // partition number
+        var part: Int = 0
+
+        // get the index of the partition
+        override def open(params: Configuration): Unit = {
+          part = getRuntimeContext.getIndexOfThisSubtask
+        }
+
+        // bind the partition number to each keySet/block so that we can put them back the correct order
+        // presently this is only going to work for Int-Keyed Matrices.  String Keyed multiplications will
+        // incorrect if partitioning is out of order
+        def mapPartition(values: java.lang.Iterable[(Array[K1], Matrix)], out: Collector[(Int, K1)]): Unit  = {
+
+          val blockIter = values.iterator()
+          if (blockIter.hasNext()) {
+            //map the task ID to the first key in the task
+            val r = part -> blockIter.next._1(0)
+            require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
+            out.collect(r)
+          }
+        }
+      })
+        .collect()
+        // reverse
+        .map(x => x._2.asInstanceOf[Int] -> x._1)
+
+        // sort on the value of the key
+        .sortBy(_._1)
+
+        // trow away the old partition task ids, they're no good.
+        .unzip._1
+
+        //rekey with 0 based partition identifiers to be used for the join
+        .zipWithIndex
+
+      // tuple to be broadcast to the mapPartition Function
+      val partMap = blocksA.getExecutionEnvironment.fromCollection(blocksAFirstPartitionKey)
+
+
+       // We will be joining blocks in B to blocks in A using A-partition indexes as a key.
+       // we'll broadcast out key->partition identifier to this block
+       // Prepare A side.
+      val blocksAKeyed = blocksA.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K1], Matrix),
+                                                            (Int, Array[K1], Matrix)] {
+        // partition number
+        var part: Int = 0
+
+        var pMap: Map[Int, Int] = _
+        // get the index of the partition
+        override def open(params: Configuration): Unit = {
+          val runtime = getRuntimeContext
+          val dsX: util.List[(Int,Int)] = runtime.getBroadcastVariable("partMap")
+          val parts: scala.collection.mutable.ArrayBuffer[(Int,Int)] = new scala.collection.mutable.ArrayBuffer[(Int,Int)]()
+          val dsIter = dsX.asScala.toIterator
+          parts.appendAll(dsIter)
+           pMap = parts.map(x => x._1 -> x._2).toMap
+         }
+
+         // bind the partition number to each keySet/block
+         def mapPartition(values: java.lang.Iterable[(Array[K1], Matrix)], out: Collector[(Int, Array[K1], Matrix)]): Unit  = {
+
+           val blockIter = values.iterator()
+           if (blockIter.hasNext()) {
+             val keysBlock = blockIter.next
+             // look up the correct order that this block should be in
+             part = pMap(keysBlock._1.asInstanceOf[Array[Int]](0))
+             val r = part -> (keysBlock._1 -> keysBlock._2)
+             require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
+             out.collect((r._1, r._2._1, r._2._2))
+           }
+         }
+      }).withBroadcastSet(partMap, "partMap")
+
       println("\n\n\naNonEmptyPArts:"+aNonEmptyParts+"\n\n\n")
       println("\n\n\nbNonEmptyPArts:"+bNonEmptyParts+"\n\n\n")
 
       // throw away empty partitions
-      blocksAKeyed.setParallelism(aNonEmptyParts)
+//      blocksAKeyed.setParallelism(aNonEmptyParts)
 
       // key the B blocks with the blocks of a assuming that they begin with 0 and are continuous
       // not sure if this assumption holds.
 
       implicit val typeInformationB = createTypeInformation[(Int, (Array[K2], Matrix))]
 
-      val blocksBKeyed =
-        blocksB.setParallelism(aNonEmptyParts).flatMap(new FlatMapFunction[(Array[K2], Matrix), (Int, Array[K2], Matrix)] {
-          def flatMap(in: (Array[K2], Matrix), out: Collector[(Int, Array[K2], Matrix)]): Unit = {
 
-            var partsB = 0
-            for (blockKey <- (0 until aNonEmptyParts)) {
-              if(partsB < aNonEmptyParts) {
-                out.collect((blockKey, in._1, in._2))
-                partsB += 1
-              }
+//      val blocksAKeyed =
+//        blocksA.flatMap(new FlatMapFunction[(Array[K1], Matrix), (Int, Array[K1], Matrix)] {
+//          var partsA = 0
+//          def flatMap(in: (Array[K1], Matrix), out: Collector[(Int, Array[K1], Matrix)]): Unit = {
+//            out.collect((partsA, in._1, in._2))
+//            partsA += 1
+//          }
+//        })
+//      blocksA.setParallelism(aNonEmptyParts)      // get the first key of each Partition
+    val blocksBFirstPartitionKey = blocksB.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K2], Matrix),
+      (Int, K2) ] {
+      // partition number
+      var part: Int = 0
+
+      // get the index of the partition
+      override def open(params: Configuration): Unit = {
+        part = getRuntimeContext.getIndexOfThisSubtask
+      }
+
+      // bind the partition number to each keySet/block so that we can put them back the correct order
+      // presently this is only going to work for Int-Keyed Matrices.  String Keyed multiplications will
+      // incorrect if partitioning is out of order
+      def mapPartition(values: java.lang.Iterable[(Array[K2], Matrix)], out: Collector[(Int, K2)]): Unit  = {
+
+        val blockIter = values.iterator()
+        if (blockIter.hasNext()) {
+          //map the task ID to the first key in the task
+          val r = part -> blockIter.next._1(0)
+          require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
+          out.collect(r)
+        }
+      }
+    })
+      .collect()
+      // reverse
+      .map(x => x._2.asInstanceOf[Int] -> x._1)
+
+      // sort on the value of the key
+      .sortBy(_._1)
+
+      // trow away the old partition task ids, they're no good.
+      .unzip._1
+
+      //rekey with 0 based partition identifiers to be used for the join
+      .zipWithIndex
+
+
+      // tuple to be broadcast to the mapPartition Function
+      val partBMap = blocksA.getExecutionEnvironment.fromCollection(blocksBFirstPartitionKey)
+
+      val blocksBKeyed = blocksB.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K2], Matrix),
+        (Int, Array[K2], Matrix)] {
+        // partition number
+        var part: Int = 0
+
+        var pMap: Map[Int, Int] = _
+        // get the index of the partition
+        override def open(params: Configuration): Unit = {
+          val runtime = getRuntimeContext
+          val dsX: util.List[(Int,Int)] = runtime.getBroadcastVariable("partMap")
+          val parts: scala.collection.mutable.ArrayBuffer[(Int,Int)] = new scala.collection.mutable.ArrayBuffer[(Int,Int)]()
+          val dsIter = dsX.asScala.toIterator
+          parts.appendAll(dsIter)
+          pMap = parts.map(x => x._1 -> x._2).toMap
+        }
+
+        // bind the partition number to each keySet/block
+        def mapPartition(values: java.lang.Iterable[(Array[K2], Matrix)], out: Collector[(Int, Array[K2], Matrix)]): Unit  = {
+
+          val blockIter = values.iterator()
+          if (blockIter.hasNext()) {
+            val keysBlock = blockIter.next
+            // look up the correct order that this block should be in
+            if(!(keysBlock._1 == null)) {
+              part = pMap.getOrElse(keysBlock._1.asInstanceOf[Array[Int]](0), 0)
+              val r = part -> (keysBlock._1 -> keysBlock._2)
+              require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
+              out.collect((r._1, r._2._1, r._2._2))
             }
           }
-        })
+        }
+      }).withBroadcastSet(partBMap, "partMap")
 
+
+
+//      val blocksBKeyed =
+//        blocksB.setParallelism(aNonEmptyParts).flatMap(new RichMapFlatMapFunction[(Array[K2], Matrix), (Int, Array[K2], Matrix)] {
+//
+//          var pMap: Map[Int, Int] = _
+//          var partsB = 0
+//          // get the index of the partition
+//          override def open(params: Configuration): Unit = {
+//            val runtime = getRuntimeContext
+//            val dsX: util.List[(Int, Int)] = runtime.getBroadcastVariable("partMap")
+//            val parts: scala.collection.mutable.ArrayBuffer[(Int, Int)] = new scala.collection.mutable.ArrayBuffer[(Int, Int)]()
+//            val dsIter = dsX.asScala.toIterator
+//            parts.appendAll(dsIter)
+//            pMap = parts.map(x => x._1 -> x._2).toMap
+//          }
+//
+//
+//          def mapPartition(in: (Array[K2], Matrix), out: Collector[(Int, Array[K2], Matrix)]): Unit = {
+//            partsB = pMap(in._1.asInstanceOf[Array[Int]](0))
+//            out.collect((partsB, in._1, in._2))
+//
+//          }
+//        }).withBroadcastSet(partBMap, "partMap")
 
 
       println("\n\n\nBlocksA:")
@@ -300,7 +453,7 @@ object FlinkOpABt {
       blocksBKeyed.collect().foreach{x => println(x._1 + " -> " + x._3)}
       println("Blocks after partition index mapping!!! \n\n\n")
 
-      println("\n\n BlocksB.numPartitions:" +blocksBKeyed.collect().size)
+      println("\n\n BlocksB.numPartitions:" + blocksBKeyed.collect().size)
 
 
 
@@ -329,6 +482,5 @@ object FlinkOpABt {
      // System.exit(1)
       mapped
       }
-
 
   }

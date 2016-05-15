@@ -59,9 +59,7 @@ trait DistributedFlinkSuite extends DistributedMahoutSuite { this: Suite =>
   override protected def beforeAll(configMap: ConfigMap): Unit = {
     super.beforeAll(configMap)
 
-    // need to make sure that this is actually getting the correct properties for {{taskmanager.tmp.dirs}}
     val mahoutHome = getMahoutHome()
-
     GlobalConfiguration.loadConfiguration(mahoutHome + "/conf/flink-config.yaml")
     val conf = GlobalConfiguration.getConfiguration
 
