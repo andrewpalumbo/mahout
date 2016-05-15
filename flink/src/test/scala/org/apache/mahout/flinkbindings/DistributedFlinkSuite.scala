@@ -21,6 +21,7 @@ package org.apache.mahout.flinkbindings
 import java.util.concurrent.TimeUnit
 
 import org.apache.flink.api.scala.ExecutionEnvironment
+import org.apache.flink.configuration.{Configuration, GlobalConfiguration}
 import org.apache.flink.test.util.{ForkableFlinkMiniCluster, TestBaseUtils}
 import org.apache.mahout.math.drm.DistributedContext
 import org.apache.mahout.test.DistributedMahoutSuite
@@ -35,7 +36,7 @@ trait DistributedFlinkSuite extends DistributedMahoutSuite { this: Suite =>
 
   var cluster: Option[ForkableFlinkMiniCluster] = None
   val parallelism = 4
-  protected val DEFAULT_AKKA_ASK_TIMEOUT: Long = 1000
+  protected val DEFAULT_AKKA_ASK_TIMEOUT: Long = 10000
   protected var DEFAULT_TIMEOUT: FiniteDuration = new FiniteDuration(DEFAULT_AKKA_ASK_TIMEOUT, TimeUnit.SECONDS)
 
   def initContext() {
@@ -58,14 +59,22 @@ trait DistributedFlinkSuite extends DistributedMahoutSuite { this: Suite =>
   override protected def beforeAll(configMap: ConfigMap): Unit = {
     super.beforeAll(configMap)
 
-    val cl = TestBaseUtils.startCluster(
-      1,
-      parallelism,
-      false,
-      false,
-      true)
+    // need to make sure that this is actually getting the correct properties for {{taskmanager.tmp.dirs}}
+    val mahoutHome = getMahoutHome()
 
+    GlobalConfiguration.loadConfiguration(mahoutHome + "/conf/flink-config.yaml")
+    val conf = GlobalConfiguration.getConfiguration
+
+    val cl = TestBaseUtils.startCluster(conf, true)
+//
+//      1,
+//      parallelism,
+//      false,
+//      false,
+//      true)
+//
     env = ExecutionEnvironment.createLocalEnvironment(parallelism)
+
 
     cluster = Some(cl)
     initContext()

@@ -65,3 +65,6 @@ taskmanager.tmp.dirs: /tmp/mahoutcache
 # via keys 'fs.hdfs.hdfsdefault' and 'fs.hdfs.hdfssite'.
 #
 # fs.hdfs.hadoopconf: /path/to/hadoop/conf/
+akka.framesize: 1g
+taskmanager.memory.size: 4g
+akka.ask.timeout: 10000s
