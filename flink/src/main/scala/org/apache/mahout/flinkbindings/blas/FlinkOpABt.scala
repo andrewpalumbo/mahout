@@ -107,6 +107,7 @@ object FlinkOpABt {
 
       // We need to send keysB to the aggregator in order to know which columns are being updated.
       val result = (keysA, keysB, blockA %*% blockB.t)
+       println("\n\nmultiply blockA: "+ blockA+ "\nby blockB: "+blockB.t+": == "+blockA %*% blockB.t)
 
       ms = traceDo(System.currentTimeMillis() - ms.get)
             trace(
@@ -132,48 +133,78 @@ object FlinkOpABt {
             // group by the partition key
             .groupBy(0)
 
-            // Initalize the combiner as an empty transposed matrix:
-            // (Op.A.ncol x partitionBlock.nrow).t
-            // for each group (block partition)
+            // Initalize  a combiner as an empty transposed matrix:
+            // (ProdNcol x ProdNRow).t
+            // and fill with the result of the by-partition matrix
+            // using the A's rowKeys for the column indices
+            // and the indices of A's rowKeys for the row
+
             .combineGroup(new GroupCombineFunction[(Int, (Array[K], Array[Int], Matrix)),
-                ((Array[K],  Matrix),(Array[K], Array[Int], Matrix))] {
+              (Array[K],  Matrix)] {
 
-               def combine(values: java.lang.Iterable[(Int, (Array[K], Array[Int], Matrix))],
-                           out: Collector[((Array[K],  Matrix), (Array[K], Array[Int], Matrix))]): Unit = {
-                   val tuple = values.iterator().next
-                   val rowKeys = tuple._2._1
-                   val colKeys = tuple._2._2
-                   val block = tuple._2._3
+            //               def combine(values: java.lang.Iterable[(Int, (Array[K], Array[Int], Matrix))],
+            //                           out: Collector[((Array[K],  Matrix), (Array[K], Array[Int], Matrix))]): Unit = {
+            def combine(values: java.lang.Iterable[(Int, (Array[K], Array[Int], Matrix))],
+                        out: Collector[(Array[K], Matrix)]): Unit = {
 
-                   // initialize the combiner as a sparse matrix.
-                   // set each row of the transposed combiner to the column
-                   // of the already block wise multiplied Matrix
-                   val comb = new SparseMatrix(prodNCol, block.nrow).t
-                   for ((col, i) <- colKeys.zipWithIndex) comb(::, col) := block(::, i)
-                   out.collect((rowKeys, comb), (rowKeys, colKeys, block))
+
+              val it = values.iterator()
+              while (it.hasNext) {
+                val tuple = it.next
+                val partitionID = tuple._1
+                val rowKeys = tuple._2._1
+                val colKeys = tuple._2._2
+                val block = tuple._2._3
+
+                // initialize the combiner as a sparse matrix.
+                // set each row of the transposed combiner to the column
+                // of the already block wise multiplied Matrix
+                val comb = new SparseMatrix(prodNCol, prodNRow.toInt).t
+                for ((col, i) <- colKeys.zipWithIndex) comb(::, col) := block(::, i)
+
+                println(partitionID + " comb ->" + comb)
+                println(partitionID + " block ->" + block)
+                //     out.collect((rowKeys, comb), (rowKeys, colKeys, block))
+                out.collect(rowKeys, comb)
+              }
+            }
+          })
+
+            .reduceGroup(new RichGroupReduceFunction[(Array[K], Matrix), (Array[K], Matrix)] {
+
+              def reduce(in: java.lang.Iterable[(Array[K],Matrix)], out: Collector[(Array[K], Matrix)]): Unit = {
+
+                val it = in.asScala.toList
+                val tuple = it.head
+                val keys = tuple._1
+                val block: Matrix = tuple._2
+                for(curr <- it.tail ){
+                  block += curr._2
+                }
+              out.collect(keys -> block)
               }
             })
 
 
              // combine all members of each group into the above defined combiner
-             .combineGroup(new GroupCombineFunction[((Array[K], Matrix),(Array[K], Array[Int], Matrix)),
-                 (Array[K], Matrix)] {
-
-                def combine(values: java.lang.Iterable[((Array[K], Matrix),(Array[K], Array[Int], Matrix))],
-                  out: Collector[(Array[K], Matrix)]): Unit = {
-                    val tuple = values.iterator().next()
-
-                  // the combiner
-                  val (rowKeys, c) = tuple._1
-
-                  // the matrix
-                  val (_, colKeys, block) = tuple._2
-                  for ((col, i) <- colKeys.zipWithIndex) c(::, col) := block(::, i)
-
-                  out.collect(rowKeys -> c)
-
-                }
-             })
+//             .combineGroup(new GroupCombineFunction[((Array[K], Matrix),(Array[K], Array[Int], Matrix)),
+//                 (Array[K], Matrix)] {
+//
+//                def combine(values: java.lang.Iterable[((Array[K], Matrix),(Array[K], Array[Int], Matrix))],
+//                  out: Collector[(Array[K], Matrix)]): Unit = {
+//                    val tuple = values.iterator().next()
+//
+//                  // the combiner
+//                  val (rowKeys, c) = tuple._1
+//
+//                  // the matrix
+//                  val (_, colKeys, block) = tuple._2
+//                  for ((col, i) <- colKeys.zipWithIndex) c(::, col) := block(::, i)
+//
+//                  out.collect(rowKeys -> c)
+//
+//                }
+//             })
 
 
             // now finally reduce the block
@@ -182,7 +213,7 @@ object FlinkOpABt {
 
                    mx1._2 += mx2._2
 
-                  println("/n/n/n"+mx1._2+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                  println("\n\nReduce:"+mx1._2+"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
                    mx1._1 -> mx1._2
                 }
@@ -191,7 +222,7 @@ object FlinkOpABt {
 
 
     val res = new BlockifiedFlinkDrm(ds = blockwiseMmulDataSet, ncol = prodNCol)
-//    println(datasetWrap(res.asRowWise.ds).collect)
+    println(datasetWrap(res.asRowWise.ds).collect)
     res
 
   }
@@ -248,7 +279,6 @@ object FlinkOpABt {
       }).collect().head
 
 
-
       // get the first key of each Partition
       val blocksAFirstPartitionKey = blocksA.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K1], Matrix),
         (Int, K1) ] {
@@ -287,7 +317,7 @@ object FlinkOpABt {
         //rekey with 0 based partition identifiers to be used for the join
         .zipWithIndex
 
-      // tuple to be broadcast to the mapPartition Function
+      // tuple of keys->partition # to be broadcast to the mapPartition Function
       val partMap = blocksA.getExecutionEnvironment.fromCollection(blocksAFirstPartitionKey)
 
 
@@ -328,65 +358,53 @@ object FlinkOpABt {
       println("\n\n\naNonEmptyPArts:"+aNonEmptyParts+"\n\n\n")
       println("\n\n\nbNonEmptyPArts:"+bNonEmptyParts+"\n\n\n")
 
-      // throw away empty partitions
-//      blocksAKeyed.setParallelism(aNonEmptyParts)
-
-      // key the B blocks with the blocks of a assuming that they begin with 0 and are continuous
-      // not sure if this assumption holds.
-
       implicit val typeInformationB = createTypeInformation[(Int, (Array[K2], Matrix))]
 
 
-//      val blocksAKeyed =
-//        blocksA.flatMap(new FlatMapFunction[(Array[K1], Matrix), (Int, Array[K1], Matrix)] {
-//          var partsA = 0
-//          def flatMap(in: (Array[K1], Matrix), out: Collector[(Int, Array[K1], Matrix)]): Unit = {
-//            out.collect((partsA, in._1, in._2))
-//            partsA += 1
-//          }
-//        })
-//      blocksA.setParallelism(aNonEmptyParts)      // get the first key of each Partition
-    val blocksBFirstPartitionKey = blocksB.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K2], Matrix),
-      (Int, K2) ] {
-      // partition number
-      var part: Int = 0
+      //get the first key of each Partition
+      val blocksBFirstPartitionKey = blocksB.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K2], Matrix),
+        (Int, K2) ] {
+        // partition number
+        var part: Int = 0
 
-      // get the index of the partition
-      override def open(params: Configuration): Unit = {
-        part = getRuntimeContext.getIndexOfThisSubtask
-      }
-
-      // bind the partition number to each keySet/block so that we can put them back the correct order
-      // presently this is only going to work for Int-Keyed Matrices.  String Keyed multiplications will
-      // incorrect if partitioning is out of order
-      def mapPartition(values: java.lang.Iterable[(Array[K2], Matrix)], out: Collector[(Int, K2)]): Unit  = {
-
-        val blockIter = values.iterator()
-        if (blockIter.hasNext()) {
-          //map the task ID to the first key in the task
-          val r = part -> blockIter.next._1(0)
-          require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
-          out.collect(r)
+        // get the index of the partition
+        override def open(params: Configuration): Unit = {
+          part = getRuntimeContext.getIndexOfThisSubtask
         }
-      }
-    })
-      .collect()
-      // reverse
-      .map(x => x._2.asInstanceOf[Int] -> x._1)
 
-      // sort on the value of the key
-      .sortBy(_._1)
+        // bind the partition number to each keySet/block so that we can put them back the correct order
+        // presently this is only going to work for Int-Keyed Matrices.  String Keyed multiplications will
+        // incorrect if partitioning is out of order
+        def mapPartition(values: java.lang.Iterable[(Array[K2], Matrix)], out: Collector[(Int, K2)]): Unit  = {
 
-      // trow away the old partition task ids, they're no good.
-      .unzip._1
+          val blockIter = values.iterator()
+          if (blockIter.hasNext()) {
+            //map the task ID to the first key in the task
+            val r = part -> blockIter.next._1(0)
+            require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
+            out.collect(r)
+          }
+        }
+      })
+        .collect()
+        // reverse
+        .map(x => x._2.asInstanceOf[Int] -> x._1)
 
-      //rekey with 0 based partition identifiers to be used for the join
-      .zipWithIndex
+        // sort on the value of the key
+        .sortBy(_._1)
+
+        // trow away the old partition task ids, they're no good.
+        .unzip._1
+
+        //rekey with 0 based partition identifiers to be used for the join
+        .zipWithIndex
 
 
-      // tuple to be broadcast to the mapPartition Function
+      // tuple of keys->partition # to be broadcast to the mapPartition Function
       val partBMap = blocksA.getExecutionEnvironment.fromCollection(blocksBFirstPartitionKey)
 
+      // key the B blocks with the blocks of a assuming that they begin with 0 and are continuous
+      // not sure if this assumption holds.
       val blocksBKeyed = blocksB.setParallelism(aNonEmptyParts).mapPartition( new RichMapPartitionFunction[(Array[K2], Matrix),
         (Int, Array[K2], Matrix)] {
         // partition number
@@ -411,6 +429,7 @@ object FlinkOpABt {
             val keysBlock = blockIter.next
             // look up the correct order that this block should be in
             if(!(keysBlock._1 == null)) {
+              ///this should not need a Default XXX
               part = pMap.getOrElse(keysBlock._1.asInstanceOf[Array[Int]](0), 0)
               val r = part -> (keysBlock._1 -> keysBlock._2)
               require(!blockIter.hasNext, s"more than 1 (${blockIter.asScala.size + 1}) blocks per partition and A of AB'")
@@ -464,22 +483,18 @@ object FlinkOpABt {
       // Perform the inner join.
       val joined = blocksAKeyed.join(blocksBKeyed).where(0).equalTo(0)
 
-        // Apply product function which should produce smaller products.
-        // Hopefully, this streams blockB's in
-      val mapped = joined.map { tuple => tuple._1._1 ->
+      // Apply product function which should produce smaller products.
+      val mapped = joined.map{ tuple => tuple._1._1 ->
           blockFunc(((tuple._1._2), (tuple._1._3)), (tuple._2._2, tuple._2._3))
         }
 
       println("\n\n\njoined---------")
-      joined.collect().foreach{ x => println(x._1._1 + "->" + x._1._3)}
-      joined.collect().foreach{ x => println(x._2._1 + "->" + x._2._3)}
+      joined.collect().foreach{ x => println("join on : "+ x._1._1 + "->" + x._1._3 +"\n to "+ x._2._3)}
 
-      println("\n\n\nmapped---------")
-      mapped.collect().foreach{ x => println(x._1+ "->" + x._2._3)}
+      println("\n\n\nmapped...below this---------")
+      mapped.collect().foreach{ x => println("Map: "+x._1+ "->" + x._2._3)}
       println("matrix---------")
-     // mapped.collect().foreach{ x => println(x._1+ "->" + x._2._3)}
 
-     // System.exit(1)
       mapped
       }
 

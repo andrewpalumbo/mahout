@@ -142,7 +142,7 @@ object FlinkEngine extends DistributedEngine {
       case op@OpAtB(a, b) ⇒ FlinkOpAtB.notZippable(op, flinkTranslate(a),
         flinkTranslate(b)).asInstanceOf[FlinkDrm[K]]
       case op@OpABt(a, b) ⇒
-       FlinkOpABt.abt_nograph(op,flinkTranslate(a), flinkTranslate(b))
+       FlinkOpABt.abt_nograph(op, flinkTranslate(a), flinkTranslate(b))
       case op@OpAtA(a) if op.keyClassTag == ClassTag.Int ⇒ FlinkOpAtA.at_a(op, flinkTranslate(a)).asInstanceOf[FlinkDrm[K]]
       case op@OpTimesRightMatrix(a, b) ⇒
         FlinkOpTimesRightMatrix.drmTimesInCore(op, flinkTranslate(a), b)
@@ -264,7 +264,7 @@ object FlinkEngine extends DistributedEngine {
   // as Flink sets a global parallelism in ExecutionEnvironment
   private[flinkbindings] def parallelize(m: Matrix, parallelismDegree: Int)
                                         (implicit dc: DistributedContext): DrmDataSet[Int] = {
-    val rows = (0 until m.nrow).map(i => (i, m(i, ::)))
+    val rows = (0 until m.nrow).map(i => (i, m(i, ::))).sortBy(_._1)
     val dataSetType = TypeExtractor.getForObject(rows.head)
     dc.env.fromCollection(rows)//.partitionByRange(0)
   }
