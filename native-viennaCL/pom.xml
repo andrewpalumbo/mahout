@@ -23,22 +23,22 @@
   <parent>
     <groupId>org.apache.mahout</groupId>
     <artifactId>mahout</artifactId>
-    <version>0.12.3-SNAPSHOT</version>
+    <version>0.12.2-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
-  <artifactId>mahout-math-scala_${scala.compat.version}</artifactId>
-  <name>Mahout Math Scala bindings</name>
-  <description>High performance scientific and technical computing data structures and methods,
-    mostly based on CERN's
-    Colt Java API
+  <!--<artifactId>mahout-native-viennacl_${scala.compat.version}</artifactId>-->
+  <artifactId>mahout-native-viennacl_${scala.compat.version}</artifactId>
+
+  <name>Mahout Native VienniaCL Bindings</name>
+  <description>Native Structures and interfaces to be used from Mahout math-scala.
   </description>
 
   <packaging>jar</packaging>
 
   <build>
     <plugins>
-      <!-- create test jar so other modules can reuse the math-scala test utility classes. -->
+      <!-- create test jar so other modules can reuse the native test utility classes. -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -109,42 +109,74 @@
               <goal>test</goal>
             </goals>
           </execution>
+
         </executions>
       </plugin>
 
+
+
+      <!--JavaCPP native build plugin-->
+      <!--  old-style way to get it to compile. -->
+      <!--based on https://github.com/bytedeco/javacpp/wiki/Maven-->
+      <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>1.2.1</version>
+          <executions>
+              <execution>
+                  <id>javacpp</id>
+                  <phase>process-classes</phase>
+                  <goals>
+                      <goal>exec</goal>
+                  </goals>
+                  <configuration>
+                      <executable>java</executable>
+                      <arguments>
+                          <argument>-jar</argument>
+                          <argument>${org.bytedeco:javacpp:jar}</argument>
+                          <argument>-classpath</argument>
+                          <argument>${project.build.outputDirectory}</argument>
+                          <argument>-Xcompiler</argument>
+                          <argument>-I${basedir}/src/main/cpp</argument>
+                          <!--<argument>-I${basedir}/src/main/cpp/viennacl</argument>-->
+                          <!--<argument>-I${basedir}/src/main/cpp/viennacl/linalg</argument>-->
+                          <!--<argument>-I${basedir}/src/main/cpp/libviennacl/include</argument>-->
+                          <!--<argument>-I${basedir}/src/main/cpp/libviennacl/include/src</argument>-->
+                      </arguments>
+                  </configuration>
+              </execution>
+          </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>2.3</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>properties</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>1.2.1</version>
+      </plugin>
+
     </plugins>
+
   </build>
 
   <dependencies>
-
-    <dependency>
-      <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-math</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.mahout</groupId>
-      <artifactId>mahout-native-viennacl_${scala.compat.version}</artifactId>
-    </dependency>
-
-    <dependency>
-      <groupId>com.esotericsoftware.kryo</groupId>
-      <artifactId>kryo</artifactId>
-      <version>2.24.0</version>
-    </dependency>
 
     <!--  3rd-party -->
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
     </dependency>
-
-    <dependency>
-      <groupId>com.github.scopt</groupId>
-      <artifactId>scopt_${scala.compat.version}</artifactId>
-      <version>3.3.0</version>
-    </dependency>
-
 
     <!-- scala stuff -->
     <dependency>
@@ -153,8 +185,14 @@
     </dependency>
 
 
+    <dependency>
+      <groupId>org.bytedeco</groupId>
+      <artifactId>javacpp</artifactId>
+      <version>1.2.1</version>
+    </dependency>
 
   </dependencies>
+
 
   <profiles>
     <profile>
@@ -192,6 +230,7 @@
             <configuration>
               <!-- Limit memory for unit tests in Travis -->
               <argLine>-Xmx3g</argLine>
+              <!--<argLine>-Djava.library.path=${project.build.directory}/libs/natives/linux-x86_64:${project.build.directory}/libs/natives/linux:${project.build.directory}/libs/natives/maxosx</argLine>-->
             </configuration>
           </plugin>
           <plugin>
@@ -200,6 +239,7 @@
             <configuration>
               <!-- Limit memory for integration tests in Travis -->
               <argLine>-Xmx3g</argLine>
+              <!--<argLine>-Djava.library.path=${project.build.directory}/libs/natives/linux-x86_64:${project.build.directory}/libs/natives/linux:${project.build.directory}/libs/natives/maxosx</argLine>-->
             </configuration>
           </plugin>
         </plugins>
