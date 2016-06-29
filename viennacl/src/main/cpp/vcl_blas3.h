@@ -14,20 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#ifndef VCL_BLAS3_H_
+#define VCL_BLAS3_H_
+
 
 #include <stdlib.h>
 
 #include "viennacl/matrix.hpp"
-#include "viennacl/compressed_matrix.hpp"
-#include "viennacl/coordinate_matrix.hpp"
+//#include "viennacl/detail/matrix_def.hpp"
+//#include "viennacl/compressed_matrix.hpp"
+//#include "viennacl/coordinate_matrix.hpp"
 
-//namespace mmul {
 
-     // bridge to JNI functions
+
+//namespace vcl_blas3 {
+
+    // bridge to JNI functions
+
+    // dense BLAS-3
+    // dense %*% dense
+      void dense_dense_mmul(double* lhs, long lhs_rows, long lhs_cols,
+                            double* rhs, long rhs_rows, long rhs_cols,
+                            double* result);
 
     // CSR sparse matrices BLAS-3
-    // dense %*% dense
-      void dense_dense_mmul(double* lhs, long lhs_rows, long lhs_cols, double* rhs, long rhs_rows, long rhs_cols, double* result);
 
     // dense %*% sparse (CSR)/ with matrix from memory/std matrix preperation
 //    void dense_sparse_mmul(double* lhs, long lhs_rows, long lhs_cols, std::vector<std::vector<double> > rhs);
@@ -38,3 +48,4 @@
      // sparse (CSR) %*% sparse (CSR)
 //     void  sparse_sparse_mmul(std::vector<std::vector<double> >* lhs, std::vector<std::vector<double> >* rhs, std::vector<std::vector<double> >* res);
 //}
+#endif

@@ -52,14 +52,13 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
     }
     mxValues
   }
-  //prepare 1-D array from a DenseMatrix backing set
+  //prepare 2D array from a 1-D array for a DenseMatrix constructor
   def array2dUnFlatten(array: Array[Double], numRows: Int, numCols: Int): Array[Array[Double]] = {
 
     val length: Int = array.length
     val mxValues = ofDim[Double](numRows,numCols)//(numCols)
     for (i <- 0 until numRows) {
       System.arraycopy(array, i * numCols, mxValues(i), 0, numCols)
-
     }
     mxValues
   }
@@ -67,9 +66,6 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
 
   // Distributed Context to check for VCL Capabilities
   val vclCtx = new VclCtx()
-
-
-
 
 
   test("Simple dense %*% dense native mmul"){
@@ -83,8 +79,8 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
       val n = 3
 
       // Dense row-wise
-      val mxA = new DenseMatrix(d, d) //:= { (_,_,_) => r1.nextDouble()}
-      val mxB = new DenseMatrix(d, d) //:= { (_,_,_) => r1.nextDouble()}
+      val mxA = new DenseMatrix(d, d)
+      val mxB = new DenseMatrix(d, d)
 
       // add some data
        mxA := { (_,_,_) => r1.nextDouble()}
@@ -98,26 +94,26 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
 
       //prepare 1-D array from mxA's backing set
       val flatMxA: Array[Double] = array2dFlatten(mxA.getBackingArray, mxA.nrow, mxA.ncol)
-      val flatMxB: Array[Double]  = array2dFlatten(mxB.getBackingArray, mxB.nrow, mxB.ncol)
+      val flatMxB: Array[Double] = array2dFlatten(mxB.getBackingArray, mxB.nrow, mxB.ncol)
 
       // mxC = mxA %*% mxB
       val flatMxC: Array[Double] = new Array[Double](mxA.nrow * mxB.ncol)
 
+      // load the native library
       val vclblas: vcl_blas3 = new vcl_blas3()
 
       // mxC = mxA %*% mxB via VCL MMul
-      dense_dense_mmul(flatMxA,
+      dense_dense_mmul(new DoublePointer(DoubleBuffer.wrap(flatMxA)),
                        mxA.nrow.toLong, mxA.ncol.toLong,
-                       flatMxB,
+                       new DoublePointer(DoubleBuffer.wrap(flatMxB)),
                        mxA.nrow.toLong, mxA.ncol.toLong,
-                       flatMxC
+                       new DoublePointer(DoubleBuffer.wrap(flatMxC))
       )
 
-      val res = array2dUnFlatten(flatMxC,mxA.nrow,mxB.ncol)
+      val res = array2dUnFlatten(flatMxC, mxA.nrow, mxB.ncol)
       val mxCVCL = new DenseMatrix(res, true)
 
       mxCVCL.norm - mxCControl.norm should be < 1e-6
-
 
 
     } else {

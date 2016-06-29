@@ -5,24 +5,19 @@ import org.bytedeco.javacpp.annotation.*;
 
 
 @Platform(includepath={"/usr/include/","/usr/include/CL/","/usr/include/viennacl/"},
- include={"vcl_blas3.h","viennacl/matrix.hpp","viennacl/linalg/prod.hpp","forwards.h" })
-//@Namespace("mmul")
-public class vcl_blas3 {
+ include={"vcl_blas3.h","vcl_blas3.cpp","viennacl/matrix.hpp","viennacl/linalg/prod.hpp","forwards.h",
+          })
+//@Namespace("vcl_blas3")
+public class vcl_blas3 extends Pointer{
     public vcl_blas3(){
         Loader.load();
     }
     static {Loader.load();}
 
     @Name("dense_dense_mmul")
-    public static native void dense_dense_mmul(@Cast("double* ") double[] mxA,
-                                               long mxANrow, long mxANcol,
-                                               @Cast("double* ") double[] mxB,
-                                               long mxBNrow, long mxBNcol,
-                                               @Cast("double* ") double[] mxRes);
+    public static native void dense_dense_mmul(@Cast("double *") DoublePointer mxA,
+                                               @ByVal long mxANrow, @ByVal long mxANcol,
+                                               @Cast("double *") DoublePointer mxB,
+                                               @ByVal long mxBNrow, @ByVal long mxBNcol,
+                                               @Cast("double *") DoublePointer mxRes);
 }
-//#include "viennacl/matrix.hpp"
-//        #include "viennacl/compressed_matrix.hpp"
-//        #include "viennacl/coordinate_matrix.hpp"
-//        #include "viennacl/linalg/prod.hpp"
-//        #include "forwards.h"
-//        #include "mem_handle.hpp"

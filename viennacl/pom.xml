@@ -130,6 +130,9 @@
                       <goal>exec</goal>
                   </goals>
                   <configuration>
+                    <environmentVariables>
+                      <LD_LIBRARY_PATH>{project.basedir}/target/classes/org/apache/mahout/javacpp/linalg/linux-x86_64/</LD_LIBRARY_PATH>
+                    </environmentVariables>
                       <executable>java</executable>
                       <arguments>
                           <argument>-jar</argument>
@@ -137,13 +140,7 @@
                           <argument>-classpath</argument>
                           <argument>${project.build.outputDirectory}</argument>
                           <argument>-Xcompiler</argument>
-                          <!--use the include directory of the .hpp files after running -->
-                          <!--sudo apt-get install libviennacl-dev-->
-                          <!-- this must be changed if the headers are in a different directory -->
-                        <argument>-I${project.basedir}/src/main/cpp</argument>
-                          <!--<argument>-I/usr/include</argument>/viennacl/src/main/cpp-->
-                        <!--TODO: set an e.g viennacl.install property that can be overridded from maven-->
-                        <!--<argument>-I${viennacl.install}</argument>-->
+                          <argument>-I${project.basedir}/src/main/cpp</argument>
                       </arguments>
                   </configuration>
               </execution>
