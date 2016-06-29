@@ -17,7 +17,7 @@ package org.apache.mahout.viennacl
  */
 
 
-import java.nio.{ByteBuffer, DoubleBuffer}
+import java.nio._
 import java.util.Random
 
 import org.apache.mahout.javacpp.linalg.vcl_blas3._
@@ -64,21 +64,13 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
   }
 
 
-  def time(op: => Unit): Long = {
-    val ms = System.currentTimeMillis()
-    op
-    System.currentTimeMillis() - ms
-  }
-
-  def getMmulAvgs(mxA: Matrix, mxB: Matrix, n: Int) = {
-
-    var control: Matrix = null
-    var mmulVal: Matrix = null
-
-    val current = Stream.range(0, n).map { _ => time {control = mxA.times(mxB)} }.sum.toDouble / n
-    val experimental = Stream.range(0, n).map { _ => time {mmulVal = MMul(mxA, mxB, None)} }.sum.toDouble / n
-    (control - mmulVal).norm should be < 1e-10
-    current -> experimental
+  def makeDoubleBuffer(arr: Array[Double]): DoubleBuffer = {
+    def bb: ByteBuffer = ByteBuffer.allocateDirect(arr.length * 8)
+    bb.order(ByteOrder.nativeOrder())
+    val db: DoubleBuffer = bb.asDoubleBuffer()
+    db.put(arr)
+    db.position(0)
+    db
   }
 
 
@@ -91,7 +83,7 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
 
       val r1 = new Random(1234)
 
-      val d = 5000
+      val d = 300
 
       // Dense row-wise
       val mxA = new DenseMatrix(d, d)
@@ -104,8 +96,6 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
       // time Mahout MMul
       // mxC = mxA %*% mxB via Mahout MMul
       val mxCControl = mxA %*% mxB
-
-
 
 
       //prepare 1-D array from mxA's backing set
@@ -132,7 +122,7 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
       val mxCVCL = new DenseMatrix(res, true)
 
 
-      mxCVCL.norm - mxCControl.norm should be < 1e-6
+      mxCVCL.norm - mxCControl.norm should be < 1e-10
 
     } else {
       printf("No Native VCL library found... Skipping test")
@@ -147,7 +137,7 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
 
       val r1 = new Random(1234)
 
-      val d = 5000
+      val d = 300
       val n = 3
 
       // Dense row-wise
@@ -194,9 +184,69 @@ class HelloVCLTestSuite extends FunSuite with Matchers {
       }
       val nativeTime = (System.currentTimeMillis() - nativeMsStart).toDouble / n.toDouble
 
-      println("Mahout 5000 x 5000 dense mmul time: "+ mahoutTime+ " ms ")
-      println("Native  5000 x 5000 dense mmul time: "+ nativeTime+ " ms ")
+      println("Mahout " + d + " x " + d + " dense mmul time: "+ mahoutTime + " ms ")
+      println("Native " + d + " x " + d + " dense mmul time: "+ nativeTime + " ms ")
 //      mxCVCL.norm - mxCControl.norm should be < 1e-6
+    } else {
+      printf("No Native VCL library found... Skipping test")
+    }
+  }
+  test("Simple dense %*% dense native MMul comparison with mahout MMul - using ByteBuffers"){
+
+    // probe to see if VCL libraries are installed
+    if (vclCtx.useVCL) {
+
+      val r1 = new Random(1234)
+
+      val d = 5000
+      val n = 3
+
+      // Dense row-wise
+      val mxA = new DenseMatrix(d, d)
+      val mxB = new DenseMatrix(d, d)
+
+      // add some data
+      mxA := { (_,_,_) => r1.nextDouble()}
+      mxB := { (_,_,_) => r1.nextDouble()}
+
+      // time Mahout MMul
+//      val mahoutMsStart = System.currentTimeMillis()
+//      for(i <- 0 until n ) {
+//        // mxC = mxA %*% mxB via Mahout MMul
+//        val mxCControl = mxA %*% mxB
+//      }
+//      val mahoutTime = (System.currentTimeMillis() - mahoutMsStart).toDouble / n.toDouble
+
+      val nativeMsStart = System.currentTimeMillis()
+      for(i <- 0 until n ) {
+        //prepare 1-D array from mxA's backing set
+        val flatMxA: Array[Double] = array2dFlatten(mxA.getBackingArray, mxA.nrow, mxA.ncol)
+        val flatMxB: Array[Double] = array2dFlatten(mxB.getBackingArray, mxB.nrow, mxB.ncol)
+
+        // mxC = mxA %*% mxB
+        val flatMxC: Array[Double] = new Array[Double](mxA.nrow * mxB.ncol)
+
+        // load the native library
+        val vclblas: vcl_blas3 = new vcl_blas3()
+
+        // mxC = mxA %*% mxB via VCL MMul
+        // using direct ByteBuffers now need to compare speed with in-direct DoubleBuffers
+        dense_dense_mmul(new DoublePointer(makeDoubleBuffer(flatMxA)),
+          mxA.nrow.toLong, mxA.ncol.toLong,
+          new DoublePointer(makeDoubleBuffer(flatMxB)),
+          mxA.nrow.toLong, mxA.ncol.toLong,
+          new DoublePointer(makeDoubleBuffer(flatMxC))
+        )
+
+        val res = array2dUnFlatten(flatMxC, mxA.nrow, mxB.ncol)
+        val mxCVCL = new DenseMatrix(res, true)
+
+      }
+      val nativeTime = (System.currentTimeMillis() - nativeMsStart).toDouble / n.toDouble
+
+//      println("Mahout " + d + " x " + d + " dense mmul time: "+ mahoutTime + " ms ")
+      println("Native " + d + " x " + d + " dense mmul time: "+ nativeTime + " ms ")
+      //      mxCVCL.norm - mxCControl.norm should be < 1e-6
     } else {
       printf("No Native VCL library found... Skipping test")
     }
