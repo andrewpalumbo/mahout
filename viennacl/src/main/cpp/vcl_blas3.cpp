@@ -27,7 +27,6 @@
 //#include "mem_handle.hpp"
 
 
-//using namespace mmul;
 namespace vcl_blas3 {
     // bridge to JNI functions
 
@@ -36,7 +35,6 @@ namespace vcl_blas3 {
      void dense_dense_mmul(double* lhs, long lhs_rows, long lhs_cols,
                            double* rhs, long rhs_rows, long rhs_cols,
                            double* result) {
-
     /** VCL 1.5.2
     * explicit matrix_base(SCALARTYPE * ptr_to_mem, viennacl::memory_types mem_type,
     *           size_type mat_size1, size_type mat_start1, difference_type mat_stride1, size_type mat_internal_size1,
@@ -46,22 +44,26 @@ namespace vcl_blas3 {
                                                                       lhs_cols, 0, 1, lhs_cols);
      viennacl::matrix_base<double> mx_b(lhs, viennacl::MAIN_MEMORY, rhs_rows, 0, 1, rhs_rows,
                                                                     rhs_cols, 0, 1, rhs_cols);
-       // resulting matrix
-       viennacl::matrix_base<double> res(result, viennacl::MAIN_MEMORY, lhs_rows, 0, 1, lhs_rows,
+     // resulting matrix
+     viennacl::matrix_base<double> res(result, viennacl::MAIN_MEMORY, lhs_rows, 0, 1, lhs_rows,
                                                                         rhs_cols, 0, 1, rhs_cols);
 
-       res = viennacl::linalg::prod(mx_a, mx_b);
+     res = viennacl::linalg::prod(mx_a, mx_b);
 
 
-/** VCL 1.7.1  */
-//       viennacl:: matrix_base<double> mx_a(lhs, viennacl::MAIN_MEMORY, lhs_rows, lhs_cols);
-//       viennacl:: matrix_base<double> mx_b(rhs, viennacl::MAIN_MEMORY, rhs_rows, rhs_cols);
-//
-//       // resulting matrix
-//       viennacl:: matrix_base<double> res(result, viennacl::MAIN_MEMORY, lhs_rows, rhs_cols);
-//
-//       res = viennacl::linalg::prod(mx_a, mx_b);
-//        viennacl::linalg::prod_impl(mx_a, mx_b, res);
+     /** VCL 1.7.1
+      * explicit matrix(NumericT * ptr_to_mem, viennacl::memory_types mem_type,
+      *                  size_type rows, size_type cols)
+      *
+      * viennacl:: matrix_base<double> mx_a(lhs, viennacl::MAIN_MEMORY, lhs_rows, lhs_cols);
+      * viennacl:: matrix_base<double> mx_b(rhs, viennacl::MAIN_MEMORY, rhs_rows, rhs_cols);
+      *
+      * // resulting matrix
+      * viennacl:: matrix_base<double> res(result, viennacl::MAIN_MEMORY, lhs_rows, rhs_cols);
+      *
+      * res = viennacl::linalg::prod(mx_a, mx_b);
+      *
+      */
 
 
 
