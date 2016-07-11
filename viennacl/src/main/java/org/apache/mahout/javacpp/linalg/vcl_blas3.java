@@ -6,6 +6,7 @@ import org.bytedeco.javacpp.annotation.*;
 
 @Platform(includepath={"/usr/include/","/usr/include/CL/","/usr/include/viennacl/"},
  include={"vcl_blas3.h","vcl_blas3.cpp","viennacl/matrix.hpp","viennacl/linalg/prod.hpp","forwards.h",
+         "viennacl/detail/matrix_def.hpp"
           })
 //@Namespace("vcl_blas3")
 public class vcl_blas3 extends Pointer{

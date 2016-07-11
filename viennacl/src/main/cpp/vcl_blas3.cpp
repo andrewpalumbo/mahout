@@ -19,7 +19,7 @@
 #include "vcl_blas3.h"
 
 #include "viennacl/matrix.hpp"
-//#include "viennacl/detail/matrix_def.hpp"
+#include "viennacl/detail/matrix_def.hpp"
 //#include "viennacl/compressed_matrix.hpp"
 //#include "viennacl/coordinate_matrix.hpp"
 #include "viennacl/linalg/prod.hpp"
@@ -38,32 +38,33 @@ namespace vcl_blas3 {
     /** VCL 1.5.2
     * explicit matrix_base(SCALARTYPE * ptr_to_mem, viennacl::memory_types mem_type,
     *           size_type mat_size1, size_type mat_start1, difference_type mat_stride1, size_type mat_internal_size1,
-    *           size_type mat_size2, size_type mat_start2, difference_type mat_stride2, size_type mat_internal_size2)
+    *           size_type mat_size2, size_type mat_start2, difference_type mat_stride2, size_type mat_internal_size2, bool isRowMajor)
     */
-     viennacl::matrix_base<double> mx_a(lhs, viennacl::MAIN_MEMORY, lhs_rows, 0, 1, lhs_rows,
-                                                                      lhs_cols, 0, 1, lhs_cols);
-     viennacl::matrix_base<double> mx_b(lhs, viennacl::MAIN_MEMORY, rhs_rows, 0, 1, rhs_rows,
-                                                                    rhs_cols, 0, 1, rhs_cols);
+    viennacl::matrix_base<double> mx_a(lhs, viennacl::MAIN_MEMORY, lhs_rows, 0, 1, lhs_rows,
+                                                                     lhs_cols, 0, 1, lhs_cols,true);
+    viennacl::matrix_base<double> mx_b(lhs, viennacl::MAIN_MEMORY, rhs_rows, 0, 1, rhs_rows,
+                                                                   rhs_cols, 0, 1, rhs_cols,true);
      // resulting matrix
      viennacl::matrix_base<double> res(result, viennacl::MAIN_MEMORY, lhs_rows, 0, 1, lhs_rows,
-                                                                        rhs_cols, 0, 1, rhs_cols);
+                                                                        rhs_cols, 0, 1, rhs_cols,true);
 
      res = viennacl::linalg::prod(mx_a, mx_b);
 
 
-     /** VCL 1.7.1
-      * explicit matrix(NumericT * ptr_to_mem, viennacl::memory_types mem_type,
-      *                  size_type rows, size_type cols)
-      *
-      * viennacl:: matrix_base<double> mx_a(lhs, viennacl::MAIN_MEMORY, lhs_rows, lhs_cols);
-      * viennacl:: matrix_base<double> mx_b(rhs, viennacl::MAIN_MEMORY, rhs_rows, rhs_cols);
-      *
-      * // resulting matrix
-      * viennacl:: matrix_base<double> res(result, viennacl::MAIN_MEMORY, lhs_rows, rhs_cols);
-      *
-      * res = viennacl::linalg::prod(mx_a, mx_b);
-      *
-      */
+     /** VCL 1.7.1 */
+
+//       explicit matrix_base(SCALARTYPE * ptr_to_mem, viennacl::memory_types mem_type,
+//                        size_type rows, size_type cols)
+
+//       viennacl::matrix_base<double> mx_a(lhs, viennacl::MAIN_MEMORY, lhs_rows, lhs_cols);
+//       viennacl::matrix_base<double> mx_b(rhs, viennacl::MAIN_MEMORY, rhs_rows, rhs_cols);
+//
+//       // resulting matrix
+//       viennacl::matrix_base<double> res(result, viennacl::MAIN_MEMORY, lhs_rows, rhs_cols);
+//
+//       res = viennacl::linalg::prod(mx_a, mx_b);
+
+
 
 
 

@@ -103,7 +103,8 @@
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest-maven-plugin</artifactId>
         <configuration>
-          <argLine>-Xmx4g</argLine>
+          <!--<argLine>-Xms8g</argLine>-->
+          <argLine>-Xmx14g</argLine>
         </configuration>
         <executions>
           <execution>

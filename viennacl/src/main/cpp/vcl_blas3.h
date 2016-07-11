@@ -21,9 +21,10 @@
 #include <stdlib.h>
 
 #include "viennacl/matrix.hpp"
-//#include "viennacl/detail/matrix_def.hpp"
+#include "viennacl/detail/matrix_def.hpp"
 //#include "viennacl/compressed_matrix.hpp"
 //#include "viennacl/coordinate_matrix.hpp"
+
 
 
 
