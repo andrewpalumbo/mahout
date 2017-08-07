@@ -22,9 +22,17 @@
     <parent>
         <groupId>org.apache.mahout</groupId>
         <artifactId>mahout-spark</artifactId>
-        <version>0.13.1-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <version>${project.version}</version>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
+
+    <properties>
+        <scala.compat.version>2.11</scala.compat.version>
+        <scala.version>2.11.8</scala.version>
+        <spark.compat.version>2.0</spark.compat.version>
+        <spark.version>2.0.2</spark.version>
+    </properties>
+
 
     <artifactId>mahout-spark_2.0_${scala.compat.version}</artifactId>
     <name>Mahout Spark-2.0 Bindings</name>
@@ -34,12 +42,6 @@
 
     <packaging>jar</packaging>
 
-    <properties>
-        <scala.compat.version>2.11</scala.compat.version>
-        <scala.version>2.11.8</scala.version>
-        <spark.compat.version>2.0</spark.compat.version>
-        <spark.version>2.0.2</spark.version>
-    </properties>
 
     <build>
         <sourceDirectory>../src/main</sourceDirectory>

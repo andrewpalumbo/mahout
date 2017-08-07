@@ -23,7 +23,7 @@
   <parent>
     <groupId>org.apache.mahout</groupId>
     <artifactId>mahout</artifactId>
-    <version>0.13.1-SNAPSHOT</version>
+    <version>${project.version}</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -33,7 +33,7 @@
     Mahout Bindings for Apache Spark
   </description>
 
-  <packaging>pom</packaging>
+  <packaging>jar</packaging>
 
   <build>
     <plugins>
