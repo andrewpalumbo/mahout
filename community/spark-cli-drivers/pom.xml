@@ -152,7 +152,7 @@
             <fileset>
               <directory>../../lib/</directory>
               <includes>
-                <include>spark_cli-drivers_*.jar</include>
+                <include>spark_</include>
               </includes>
               <followSymlinks>false</followSymlinks>
             </fileset>
