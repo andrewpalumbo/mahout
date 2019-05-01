@@ -99,28 +99,28 @@
         <artifactId>apache-rat-plugin</artifactId>
       </plugin>
 
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>${org.codehaus.mojo.version}</version>
-        <executions>
-          <execution>
-            <id>script-chmod</id>
-            <phase>package</phase>
-            <configuration>
-              <executable>chmod</executable>
-              <arguments>
-                <argument>+x</argument>
-                <argument>"target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar"</argument>
-                <argument>"target/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar"</argument>
-              </arguments>
-            </configuration>
-            <goals>
-              <goal>run</goal>
-            </goals>
-          </execution>
-        </executions>
-      </plugin>
+<!--      <plugin>-->
+<!--        <groupId>org.codehaus.mojo</groupId>-->
+<!--        <artifactId>exec-maven-plugin</artifactId>-->
+<!--        <version>${org.codehaus.mojo.version}</version>-->
+<!--        <executions>-->
+<!--          <execution>-->
+<!--            <id>script-chmod</id>-->
+<!--            <phase>package</phase>-->
+<!--            <configuration>-->
+<!--              <executable>chmod</executable>-->
+<!--              <arguments>-->
+<!--                <argument>+x</argument>-->
+<!--                <argument>"target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar"</argument>-->
+<!--                <argument>"target/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar"</argument>-->
+<!--              </arguments>-->
+<!--            </configuration>-->
+<!--            <goals>-->
+<!--              <goal>run</goal>-->
+<!--            </goals>-->
+<!--          </execution>-->
+<!--        </executions>-->
+<!--      </plugin>-->
 
       <!-- copy jars to lib/ -->
       <plugin>
@@ -152,7 +152,7 @@
             <fileset>
               <directory>../../lib/</directory>
               <includes>
-                <include>spark_</include>
+                <include>spark_*</include>
               </includes>
               <followSymlinks>false</followSymlinks>
             </fileset>
