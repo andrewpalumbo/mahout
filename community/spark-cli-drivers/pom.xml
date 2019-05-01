@@ -156,6 +156,13 @@
               </includes>
               <followSymlinks>false</followSymlinks>
             </fileset>
+            <fileset>
+              <directory>${project.basedir}/community/spark-cli-drivers/</directory>
+              <includes>
+                <include>spark_*</include>
+              </includes>
+              <followSymlinks>false</followSymlinks>
+            </fileset>
           </filesets>
         </configuration>
       </plugin>
