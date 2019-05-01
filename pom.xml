@@ -421,8 +421,7 @@
       <id>all</id>
       <modules>
         <module>core</module>
-        <module>engine/spark</module>
-        <module>engine/hdfs</module>
+        <module>engine</module>
         <module>community/spark-cli-drivers</module>
         <!--<module>community/community-engines</module>-->
         <!--<module>community/community-engines/flink-batch</module>-->
@@ -437,8 +436,7 @@
       <id>apache-release</id>
       <modules>
         <module>core</module>
-        <module>engine/spark</module>
-        <module>engine/hdfs</module>
+        <module>engine</module>
         <module>community/spark-cli-drivers</module>
         <!--<module>community/community-engines</module>-->
         <!--<module>community/community-engines/flink-batch</module>-->

@@ -111,7 +111,7 @@
             <configuration>
               <tasks>
                 <copy file="target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" tofile="../../lib/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" />
-                <copy file="target/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" tofile="../../lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" />
+                <copy file="target/spark_${scala.compat.version}-${project.version}-SNAPSHOT-dependency-reduced.jar" tofile="../../lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" />
               </tasks>
             </configuration>
             <goals>
