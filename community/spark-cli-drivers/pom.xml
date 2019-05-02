@@ -132,8 +132,8 @@
             <phase>package</phase>
             <configuration>
                 <tasks>
-                  <copy file="${pom.parent.relativePath}/community/spark-cli-drivers/target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" tofile="${project.basedir}/lib/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" />
-                  <copy file="${pom.parent.relativePath}/community/spark-cli-drivers/target/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" tofile="${project.basedir}/lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" />
+                  <copy file="${pom.parent.relativePath}/../spark-cli-drivers/target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" tofile="${project.basedir}/lib/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" />
+                  <copy file="${pom.parent.relativePath}/../spark-cli-drivers/target/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" tofile="${project.basedir}/lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" />
                 </tasks>
               </configuration>
             <goals>
