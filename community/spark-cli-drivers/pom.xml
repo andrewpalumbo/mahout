@@ -132,8 +132,8 @@
             <phase>package</phase>
             <configuration>
                 <tasks>
-                  <copy file="target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" tofile="../../lib/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" />
-                  <copy file="target/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" tofile="../../lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" />
+                  <copy file="${project.basedir}/community/spark-cli-drivers/target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" tofile="${project.basedir}/lib/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" />
+                  <copy file="${project.basedir}/community/spark-cli-drivers/target/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" tofile="${project.basedir}/lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" />
                 </tasks>
               </configuration>
             <goals>
@@ -150,7 +150,7 @@
         <configuration>
           <filesets>
             <fileset>
-              <directory>../../lib/</directory>
+              <directory>${project.basedir}/lib/</directory>
               <includes>
                 <include>spark-cli*</include>
                 <include>spark_*-dependency-reduced.jar</include>
@@ -158,9 +158,10 @@
               <followSymlinks>false</followSymlinks>
             </fileset>
             <fileset>
-              <directory>${project.basedir}/community/spark-cli-drivers/</directory>
+              <directory>${project.basedir}/community/spark-cli-drivers/target/</directory>
               <includes>
                 <include>spark_*</include>
+                <include>spark_*-dependency-reduced.jar</include>
               </includes>
               <followSymlinks>false</followSymlinks>
             </fileset>
