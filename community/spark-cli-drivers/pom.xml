@@ -152,7 +152,8 @@
             <fileset>
               <directory>../../lib/</directory>
               <includes>
-                <include>spark_*</include>
+                <include>spark-cli*</include>
+                <include>spark_*-dependency-reduced.jar</include>
               </includes>
               <followSymlinks>false</followSymlinks>
             </fileset>
