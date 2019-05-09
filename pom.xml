@@ -15,8 +15,7 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 -->
-
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -28,7 +27,7 @@
   <groupId>org.apache.mahout</groupId>
   <artifactId>mahout</artifactId>
 
-  <version>0.14.1-SNAPSHOT</version>
+ <version>0.14.0-SNAPSHOT</version>
 
   <packaging>pom</packaging>
   <name>Apache Mahout</name>
@@ -97,13 +96,13 @@
   </mailingLists>
 
   <!-- Required for Release Plugin -->
-  <scm>
-    <connection>scm:git:git@github.com:apache/mahout.git</connection>
-    <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/mahout.git</developerConnection>
-    <url>https://gitbox.apache.org/repos/asf?p=mahout.git;a=tree;h=refs/heads/${project.scm.tag};hb=${project.scm.tag}</url>
-    <tag>mahout-0.14.0</tag>
-  </scm>
-  <!-- -->
+    <scm>
+      <connection>scm:git:git@github.com:apache/mahout.git</connection>
+      <developerConnection>scm:git:https://gitbox.apache.org/repos/asf/mahout.git</developerConnection>
+      <url>https://gitbox.apache.org/repos/asf?p=mahout.git;a=tree;h=refs/heads/${project.scm.tag};hb=${project.scm.tag}</url>
+      <tag>mahout-0.14.1
+      </tag>
+   </scm>
 
   <properties>
     <!--<skipTests>false</skipTests>-->
@@ -121,6 +120,11 @@
 
     <!-- `mvn site` throws a hissy fit searching no longer existing repos if this is not set false -->
     <dependency.locations.enabled>false</dependency.locations.enabled>
+
+    <!--hack to turn off linting og generated Javadocs.  this is an error in Oracle Java8 and should be fixed in java9
+     http://openjdk.java.net/jeps/212-->
+    <additionalparam>-Xdoclint:-html</additionalparam>
+    <!--EndHack-->
 
     <!--
     <maven.clover.multiproject>true</maven.clover.multiproject>
@@ -341,7 +345,7 @@
           </configuration>
         </plugin>
 
-        <!-- delete jars on claen in top directory, which is lib/ -->
+        <!-- delete jars on clean in top directory, which is lib/ -->
         <plugin>
           <artifactId>maven-clean-plugin</artifactId>
           <version>3.0.0</version>
@@ -415,18 +419,32 @@
     <profile>
       <id>all</id>
       <modules>
+        <module>core</module>
+        <module>engine</module>
         <module>community/spark-cli-drivers</module>
-        <module>community/community-engines</module>
-        <module>community/community-engines/flink-batch</module>
-        <module>community/community-engines/h2o</module>
-        <module>community/mahout-mr</module>
-        <module>experimental</module>
-        <module>experimental/viennacl</module>
-        <module>experimental/viennacl-omp</module>
+        <!--<module>community/community-engines</module>-->
+        <!--<module>community/community-engines/flink-batch</module>-->
+        <!--<module>community/community-engines/h2o</module>-->
+        <!--<module>community/mahout-mr</module>-->
+        <!--<module>experimental</module>-->
+        <!--<module>experimental/viennacl</module>-->
+        <!--<module>experimental/viennacl-omp</module>-->
       </modules>
     </profile>
     <profile>
       <id>apache-release</id>
+      <modules>
+        <module>core</module>
+        <module>engine</module>
+        <module>community/spark-cli-drivers</module>
+        <!--<module>community/community-engines</module>-->
+        <!--<module>community/community-engines/flink-batch</module>-->
+        <!--<module>community/community-engines/h2o</module>-->
+        <!--<module>community/mahout-mr</module>-->
+        <!--<module>experimental</module>-->
+        <!--<module>experimental/viennacl</module>-->
+        <!--<module>experimental/viennacl-omp</module>-->
+      </modules>
       <properties>
         <skipTests>false</skipTests>
         <maven.test.skip>false</maven.test.skip>
