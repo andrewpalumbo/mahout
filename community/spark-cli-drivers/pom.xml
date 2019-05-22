@@ -98,7 +98,7 @@
         <artifactId>apache-rat-plugin</artifactId>
       </plugin>
 
-<!--      <plugin>-->
+       <plugin> -->
 <!--        <groupId>org.codehaus.mojo</groupId>-->
 <!--        <artifactId>exec-maven-plugin</artifactId>-->
 <!--        <version>${org.codehaus.mojo.version}</version>-->
