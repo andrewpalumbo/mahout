@@ -92,13 +92,13 @@
       <plugin> -->
 
 
-      <!-- ensure licenses
+      <!-- ensure licenses -->
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
       </plugin>
 
-       <plugin> -->
+<!--      <plugin>-->
 <!--        <groupId>org.codehaus.mojo</groupId>-->
 <!--        <artifactId>exec-maven-plugin</artifactId>-->
 <!--        <version>${org.codehaus.mojo.version}</version>-->
@@ -132,7 +132,7 @@
             <configuration>
                 <tasks>
                   <copy file="target/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" tofile="${project.basedir}/../../lib/spark-cli-drivers_${scala.compat.version}-${project.version}.jar" />
-                  <!--<copy file="target/spark-cli-drivers_${scala.compat.version}-${project.version}-dependency-reduced.jar" tofile="${project.basedir}/../../lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" />-->
+                 <!-- <copy file="target/spark-cli-drivers_${scala.compat.version}-${project.version}-dependency-reduced.jar" tofile="${project.basedir}/../../lib/spark_${scala.compat.version}-${project.version}-dependency-reduced.jar" /> -->
                 </tasks>
               </configuration>
             <goals>
