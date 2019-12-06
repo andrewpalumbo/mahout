@@ -24,6 +24,7 @@ ENV SCALA_MAJOR 2.12
 ENV HADOOP_MAJOR 2.7
 ENV SPARK_MAJOR_MINOR 2.4.4
 
+
 # Before building the mahout docker image, we must build a spark distrobution following
 # the instructions in http://spark.apache.org/docs/latest/building-spark.html.
 # this Dockerfile will build Spark version 2.4.4 against Scala 2.12 by default.
@@ -37,25 +38,10 @@ RUN set -ex && \
     mkdir -p /opt/mahout && \
     mkdir -p /opt/mahout/examples && \
     mkdir -p /opt/mahout/work-dir && \
-    mkdir -p /opt/spark && \
     export MAHOUT_DOCKER_HOME=/opt/mahout && \
     export SPARK_VERSION=spark-${SPARK_MAJOR_MINOR} && \
-    export SPARK_BASE=/opt/spark && \
-    export SPARK_HOME=${SPARK_BASE}/${SPARK_VERSION}
-    export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=512m" && \
-    export SPARK_SRC_URL="https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_VERSION}.tgz" && \
-    export SPARK_SRC_SHA512_URL="https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_VERSION}.tgz.sha512" && \
-    export SPARK_SRC_SHA512="D33096E7EFBC4B131004C85FB5833AC3BAB8F097644CBE68D89ADC81F5144B5535337FD0082FA04A19C2870BD7D84758E8AE9C6EC1C7F3DF9FED35325EEA8928" && \
-    curl  -LfsS $SPARK_SRC_URL -o ${SPARK_BASE}/${SPARK_VERSION}.tgz  && \
-    curl  -LfsS $SPARK_SRC_SHA512_URL -o ${SPARK_BASE}/${SPARK_VERSION}.tgz.sha512
-    #$SPARK_HOME/$SPARK_VERSION.sha512 ${SPARK_HOME}/$SPARK_VERSION.tgz | shasum -a 512 -c - && \
-    tar -xzvf ${SPARK_BASE}/${SPARK_VERSION}.tgz -C ${SPARK_BASE}/&& \
-    echo ${SPARK_BASE}/${SPARK_VERSION}
+    export SPARK_BASE=/opt/spark
     sh ${SPARK_HOME}/dev/change-scala-version.sh ${SCALA_MAJOR} && \
-    sh ${SPARK_HOME}/dev/make-distribution.sh --name ${DATE}-${REVISION} --pip --tgz -DzincPort=${ZINC_PORT} \
-         -Phadoop-${HADOOP_MAJOR} -Pkubernetes -Pkinesis-asl -Phive -Phive-thriftserver
-
-    #sh ${SPARK_HOME}/build/mvn -Pkubernetes -Pscala-${scala_version} -DskipTests clean package
     touch /opt/mahout/RELEASE && \
     # below is for nodes.  for the moment lets get a master up
     # rm /bin/sh && \
