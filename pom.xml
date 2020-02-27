@@ -119,7 +119,7 @@
     <!-- `mvn site` throws a hissy fit searching no longer existing repos if this is not set false -->
     <dependency.locations.enabled>false</dependency.locations.enabled>
     <mahout.skip.distribution>true</mahout.skip.distribution>
-    <release.candidate>RC4</release.candidate>
+    <release.candidate>RC5</release.candidate>
     <!--hack to turn off linting og generated Javadocs.
       this is an error in Oracle Java8 and should be fixed in > java8
      http://openjdk.java.net/jeps/212 -->
@@ -306,9 +306,7 @@
             </goals>
           </execution>
         </executions>
-
       </plugin>
-
     </plugins>
 
     <pluginManagement>
@@ -700,7 +698,7 @@
             <execution>
               <id>source-release-checksum</id>
               <goals>
-                <goal>files</goal>
+                <goal>artifacts</goal>
               </goals>
             </execution>
           </executions>
@@ -716,11 +714,11 @@
                   <include>${project.artifactId}-${project.version}*.*</include>
                   <include>${project.artifactId}-${project.version}*</include>
                 </includes>
-                <directory>${project.build.directory}/**/target</directory>
+                <directory>${project.basedir}/**/target</directory>
                 <includes>
                   <include>mahout-*</include>
                 </includes>
-                <directory>${project.build.directory}/**/**/target</directory>
+                <directory>${project.basedir}/**/**/target</directory>
                 <includes>
                   <include>mahout-*</include>
                 </includes>
