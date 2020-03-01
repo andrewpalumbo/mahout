@@ -200,7 +200,7 @@
         <executions>
           <execution>
           <id>attach-javadocs</id>
-            <phase>dont-execute</phase>
+            <phase>initialize</phase>
             <goals>
             <goal>doc-jar</goal>
           </goals>

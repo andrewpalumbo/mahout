@@ -17,12 +17,13 @@
 
 package org.apache.mahout.math.als;
 
-import com.google.common.base.Preconditions;
+import  com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 import org.apache.mahout.math.DenseMatrix;
 import org.apache.mahout.math.Matrix;
 import org.apache.mahout.math.QRDecomposition;
 import org.apache.mahout.math.Vector;
+
 
 /**
  * See
