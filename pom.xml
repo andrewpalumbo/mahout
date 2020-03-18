@@ -309,7 +309,6 @@
               <goal>jar</goal>
             </goals>
           </execution>
-
         </executions>
       </plugin>
 
@@ -449,10 +448,8 @@
             </systemPropertyVariables>
           </configuration>
         </plugin>
-
       </plugins>
     </pluginManagement>
-
   </build>
 
   <profiles>
@@ -465,7 +462,6 @@
       <skipAssembly>true</skipAssembly>
     </properties>
   </profile>
-
 
   <profile>
     <id>sourcecheck</id>
