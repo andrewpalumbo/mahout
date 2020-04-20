@@ -1,0 +1,20 @@
+[~renedlog] yes I've identified the issue.  Dependencies and transitive dependencies were not being added to the {{$MAHOUT_HOME/lib}} . This is why you were getting errors in several different areas.  We've redone the \{{pom.xml}}s a full refactor and have not had a chance to catch these issues yet.  (it passes tests, locally and in {{TravisCI}} because when developing there is an {{install}} goal in the build, so the local .m2 cache had the necessary dependencies.  
+
+So, in short, {{/bin/mahout}} is not picking up _any_ dependencies because the poms still have issues, It should be a relatively simple fix. 
+
+I've had some personal issues to deal with these last few weeks, and build issues are assigned to me, currently.  
+
+The reason that this is in an RC, is as mentioned, developers end up with the dependencies in their/our {{~/.m2/cache}} so the tests pass with e.g {{mvn clean package install}} , all dependencies are in my .m2. cache..  
+
+As well, with the move away from MapReduce, mahout is intended more now, as a library than a CLI, though we do still provide CLI launchers for CCO and some other algorithms well as traits to simply implement them, we prioritize the library functionality higher during smoke testing, etc.  
+
+In previous releases, we had a fat jar on the class-path, as well as ./{{lib}}. Overlooked the missing fat jar here.
+
+We check on clusters when we have a more viable RC, usually.. As well 14.1 is a release to provide convenience binaries (i.e. in 0.14.0 we shipped no binary artifacts), I started releasing to Nexus pretty early in the cycle for that reason.    
+
+You were right this is not the Scopt issue that I'd originally thought, that issue had been a thorn in our side for a long time.
+
+ 
+
+Thank you very much for catching this, and reporting it to us, as well as for your patience.  we'll get a fix out shortly to master, so that, at least, 
+
